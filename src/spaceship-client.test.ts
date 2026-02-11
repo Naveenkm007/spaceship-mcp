@@ -100,19 +100,75 @@ describe("SpaceshipClient", () => {
   });
 
   describe("saveDnsRecords", () => {
-    it("sends PUT with force:true", async () => {
+    it("sends PUT with force:true when no conflicts exist", async () => {
+      // First call: listAllDnsRecords (no conflicts)
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ items: [{ name: "@", type: "TXT", value: "unrelated", ttl: 300 }], total: 1 }),
+      );
+      // Second call: PUT
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "A", name: "@", address: "1.2.3.4", ttl: 300 },
       ]);
 
-      const [, init] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const [, init] = mockFetch.mock.calls[1];
       expect(init.method).toBe("PUT");
       const body = JSON.parse(init.body);
       expect(body.force).toBe(true);
       expect(body.items).toHaveLength(1);
       expect(body.items[0].type).toBe("A");
+    });
+
+    it("deletes conflicting records before saving", async () => {
+      // First call: listAllDnsRecords (has conflicting CNAME)
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          items: [
+            { name: "www", type: "CNAME", cname: "old-target.example.com", ttl: 3600 },
+            { name: "@", type: "MX", exchange: "mail.example.com", preference: 10, ttl: 3600 },
+          ],
+          total: 2,
+        }),
+      );
+      // Second call: DELETE conflicting
+      mockFetch.mockResolvedValueOnce(emptyResponse());
+      // Third call: PUT new records
+      mockFetch.mockResolvedValueOnce(emptyResponse());
+
+      await client.saveDnsRecords("example.com", [
+        { type: "CNAME", name: "www", cname: "new-target.example.com", ttl: 300 },
+      ]);
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      const [, deleteInit] = mockFetch.mock.calls[1];
+      expect(deleteInit.method).toBe("DELETE");
+      const deleteBody = JSON.parse(deleteInit.body);
+      expect(deleteBody).toHaveLength(1);
+      expect(deleteBody[0].name).toBe("www");
+      expect(deleteBody[0].type).toBe("CNAME");
+
+      const [, putInit] = mockFetch.mock.calls[2];
+      expect(putInit.method).toBe("PUT");
+      const putBody = JSON.parse(putInit.body);
+      expect(putBody.items[0].cname).toBe("new-target.example.com");
+    });
+
+    it("skips delete when no existing records at all", async () => {
+      // First call: listAllDnsRecords (empty)
+      mockFetch.mockResolvedValueOnce(jsonResponse({ items: [], total: 0 }));
+      // Second call: PUT
+      mockFetch.mockResolvedValueOnce(emptyResponse());
+
+      await client.saveDnsRecords("example.com", [
+        { type: "A", name: "@", address: "1.2.3.4", ttl: 300 },
+      ]);
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const [, init] = mockFetch.mock.calls[1];
+      expect(init.method).toBe("PUT");
     });
   });
 
@@ -389,31 +445,36 @@ describe("SpaceshipClient", () => {
   });
 
   describe("buildRecordPayload (via saveDnsRecords)", () => {
+    const emptyList = () => jsonResponse({ items: [], total: 0 });
+
     it("builds MX record from preference/exchange", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "MX", name: "@", preference: 10, exchange: "mail.example.com", ttl: 3600 },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].preference).toBe(10);
       expect(body.items[0].exchange).toBe("mail.example.com");
     });
 
     it("builds MX record from value string", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "MX", name: "@", value: "10 mail.example.com", ttl: 3600 },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].preference).toBe(10);
       expect(body.items[0].exchange).toBe("mail.example.com");
     });
 
     it("builds SRV record from structured fields", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
@@ -427,67 +488,77 @@ describe("SpaceshipClient", () => {
         },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].priority).toBe(10);
       expect(body.items[0].service).toBe("_sip");
       expect(body.items[0].protocol).toBe("_tcp");
     });
 
     it("builds CNAME from cname field", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "CNAME", name: "www", cname: "example.com" },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].cname).toBe("example.com");
     });
 
     it("throws for invalid MX value format", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
+
       await expect(
         client.saveDnsRecords("example.com", [{ type: "MX", name: "@", value: "invalid" }]),
       ).rejects.toThrow("Invalid MX record format");
     });
 
     it("throws for MX without required fields", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
+
       await expect(
         client.saveDnsRecords("example.com", [{ type: "MX", name: "@" }]),
       ).rejects.toThrow("MX record must have");
     });
 
     it("throws for SRV without required fields", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
+
       await expect(
         client.saveDnsRecords("example.com", [{ type: "SRV", name: "_sip._tcp" }]),
       ).rejects.toThrow("SRV record must have");
     });
 
     it("builds ALIAS record from aliasName", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "ALIAS", name: "@", aliasName: "example.herokudns.com", ttl: 3600 },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].aliasName).toBe("example.herokudns.com");
       expect(body.items[0]).not.toHaveProperty("value");
     });
 
     it("builds CAA record from flag/tag/value", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "CAA", name: "@", flag: 0, tag: "issue", value: "letsencrypt.org", ttl: 3600 },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].flag).toBe(0);
       expect(body.items[0].tag).toBe("issue");
       expect(body.items[0].value).toBe("letsencrypt.org");
     });
 
     it("builds HTTPS record from structured fields", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
@@ -501,35 +572,38 @@ describe("SpaceshipClient", () => {
         },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].svcPriority).toBe(1);
       expect(body.items[0].targetName).toBe("cdn.example.com");
       expect(body.items[0].svcParams).toBe("alpn=h2,h3");
     });
 
     it("builds NS record from nameserver", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "NS", name: "sub", nameserver: "ns1.example.com", ttl: 3600 },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].nameserver).toBe("ns1.example.com");
     });
 
     it("builds PTR record from pointer", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
         { type: "PTR", name: "4.3.2.1", pointer: "host.example.com", ttl: 3600 },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].pointer).toBe("host.example.com");
     });
 
     it("builds SVCB record from structured fields", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
@@ -542,12 +616,13 @@ describe("SpaceshipClient", () => {
         },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].svcPriority).toBe(0);
       expect(body.items[0].targetName).toBe("svc.example.com");
     });
 
     it("builds TLSA record from structured fields", async () => {
+      mockFetch.mockResolvedValueOnce(emptyList());
       mockFetch.mockResolvedValueOnce(emptyResponse());
 
       await client.saveDnsRecords("example.com", [
@@ -564,7 +639,7 @@ describe("SpaceshipClient", () => {
         },
       ]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = JSON.parse(mockFetch.mock.calls[1][1].body);
       expect(body.items[0].port).toBe("_443");
       expect(body.items[0].protocol).toBe("_tcp");
       expect(body.items[0].usage).toBe(3);

@@ -91,6 +91,24 @@ export class SpaceshipClient {
   }
 
   async saveDnsRecords(domain: string, records: DnsRecord[]): Promise<void> {
+    const pairs = new Map<string, string>();
+    for (const r of records) {
+      pairs.set(`${r.name.toLowerCase()}|${r.type.toUpperCase()}`, r.type.toUpperCase());
+    }
+
+    const existing = await this.listAllDnsRecords(domain);
+    const conflicting = existing.filter(
+      (r) => pairs.has(`${r.name.toLowerCase()}|${r.type.toUpperCase()}`),
+    );
+
+    if (conflicting.length > 0) {
+      const deletePayload = conflicting.map((record) => this.buildRecordPayload(record));
+      await this.request(`/v1/dns/records/${encodeURIComponent(domain)}`, {
+        method: "DELETE",
+        body: JSON.stringify(deletePayload),
+      });
+    }
+
     const payload = {
       force: true,
       items: records.map((record) => this.buildRecordPayload(record)),
