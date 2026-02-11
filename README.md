@@ -25,18 +25,17 @@ A community-built [Model Context Protocol](https://modelcontextprotocol.io) (MCP
 
 This MCP server works with any client that supports the Model Context Protocol, including:
 
-| Client | Setup Method |
+| Client | Easiest install |
 |---|---|
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) | `claude mcp add` CLI command |
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | One-liner: `claude mcp add` |
+| [Codex CLI](https://github.com/openai/codex) (OpenAI) | One-liner: `codex mcp add` |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) (Google) | One-liner: `gemini mcp add` |
+| [VS Code](https://code.visualstudio.com/) (Copilot) | Command Palette: `MCP: Add Server` |
 | [Claude Desktop](https://claude.ai/download) | JSON config file |
-| [Codex CLI](https://github.com/openai/codex) (OpenAI) | `codex mcp add` CLI command or TOML config |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) (Google) | `gemini mcp add` CLI command or JSON config |
 | [Cursor](https://cursor.com) | JSON config file |
 | [Windsurf](https://codeium.com/windsurf) | JSON config file |
-| [VS Code](https://code.visualstudio.com/) (Copilot) | JSON config file or Command Palette |
+| [Cline](https://github.com/cline/cline) | UI settings |
 | [Zed](https://zed.dev) | JSON settings file |
-| [Cline](https://github.com/cline/cline) | UI settings or JSON config |
-| Any MCP-compatible client | See [Other Clients](#other-mcp-clients) below |
 
 ## Installation
 
@@ -46,90 +45,8 @@ This MCP server works with any client that supports the Model Context Protocol, 
 claude mcp add --scope user spaceship-mcp \
   --env SPACESHIP_API_KEY=your-key \
   --env SPACESHIP_API_SECRET=your-secret \
-  -- npx spaceship-mcp
+  -- npx -y spaceship-mcp
 ```
-
-### Claude Desktop
-
-Add to your Claude Desktop config file:
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "spaceship-mcp": {
-      "command": "npx",
-      "args": ["spaceship-mcp"],
-      "env": {
-        "SPACESHIP_API_KEY": "your-key",
-        "SPACESHIP_API_SECRET": "your-secret"
-      }
-    }
-  }
-}
-```
-
-### Cursor
-
-Add to `.cursor/mcp.json` in your project directory (or `~/.cursor/mcp.json` globally):
-
-```json
-{
-  "mcpServers": {
-    "spaceship-mcp": {
-      "command": "npx",
-      "args": ["spaceship-mcp"],
-      "env": {
-        "SPACESHIP_API_KEY": "your-key",
-        "SPACESHIP_API_SECRET": "your-secret"
-      }
-    }
-  }
-}
-```
-
-### Windsurf
-
-Add to `~/.codeium/windsurf/mcp_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "spaceship-mcp": {
-      "command": "npx",
-      "args": ["spaceship-mcp"],
-      "env": {
-        "SPACESHIP_API_KEY": "your-key",
-        "SPACESHIP_API_SECRET": "your-secret"
-      }
-    }
-  }
-}
-```
-
-### VS Code (Copilot)
-
-Add to `.vscode/mcp.json` in your project directory:
-
-```json
-{
-  "servers": {
-    "spaceship-mcp": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["spaceship-mcp"],
-      "env": {
-        "SPACESHIP_API_KEY": "your-key",
-        "SPACESHIP_API_SECRET": "your-secret"
-      }
-    }
-  }
-}
-```
-
-Or use the Command Palette: `Cmd+Shift+P` > `MCP: Add Server` > select **stdio**.
 
 ### Codex CLI (OpenAI)
 
@@ -137,32 +54,58 @@ Or use the Command Palette: `Cmd+Shift+P` > `MCP: Add Server` > select **stdio**
 codex mcp add spaceship-mcp \
   --env SPACESHIP_API_KEY=your-key \
   --env SPACESHIP_API_SECRET=your-secret \
-  -- npx spaceship-mcp
-```
-
-Or add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.spaceship-mcp]
-command = "npx"
-args = ["spaceship-mcp"]
-env = { "SPACESHIP_API_KEY" = "your-key", "SPACESHIP_API_SECRET" = "your-secret" }
+  -- npx -y spaceship-mcp
 ```
 
 ### Gemini CLI (Google)
 
 ```bash
-gemini mcp add spaceship-mcp -- npx spaceship-mcp
+gemini mcp add spaceship-mcp -- npx -y spaceship-mcp
 ```
 
-Or add to `~/.gemini/settings.json`:
+Set environment variables `SPACESHIP_API_KEY` and `SPACESHIP_API_SECRET` separately via `~/.gemini/settings.json`.
+
+### VS Code (Copilot)
+
+Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) > `MCP: Add Server` > select **Command (stdio)**.
+
+Or add to `.vscode/mcp.json` in your project directory:
+
+```json
+{
+  "servers": {
+    "spaceship-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "spaceship-mcp"],
+      "env": {
+        "SPACESHIP_API_KEY": "your-key",
+        "SPACESHIP_API_SECRET": "your-secret"
+      }
+    }
+  }
+}
+```
+
+### Claude Desktop / Cursor / Windsurf / Cline
+
+These clients share the same JSON format. Add the config below to the appropriate file:
+
+| Client | Config file |
+|---|---|
+| Claude Desktop (macOS) | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Desktop (Windows) | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Cursor (project) | `.cursor/mcp.json` |
+| Cursor (global) | `~/.cursor/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+| Cline | Settings > MCP Servers > Edit |
 
 ```json
 {
   "mcpServers": {
     "spaceship-mcp": {
       "command": "npx",
-      "args": ["spaceship-mcp"],
+      "args": ["-y", "spaceship-mcp"],
       "env": {
         "SPACESHIP_API_KEY": "your-key",
         "SPACESHIP_API_SECRET": "your-secret"
@@ -174,14 +117,14 @@ Or add to `~/.gemini/settings.json`:
 
 ### Zed
 
-Add to your Zed settings file (`~/.zed/settings.json` on macOS, `~/.config/zed/settings.json` on Linux):
+Add to your Zed settings (`~/.zed/settings.json` on macOS, `~/.config/zed/settings.json` on Linux):
 
 ```json
 {
   "context_servers": {
     "spaceship-mcp": {
       "command": "npx",
-      "args": ["spaceship-mcp"],
+      "args": ["-y", "spaceship-mcp"],
       "env": {
         "SPACESHIP_API_KEY": "your-key",
         "SPACESHIP_API_SECRET": "your-secret"
@@ -191,12 +134,23 @@ Add to your Zed settings file (`~/.zed/settings.json` on macOS, `~/.config/zed/s
 }
 ```
 
+### Codex CLI (TOML config alternative)
+
+If you prefer editing `~/.codex/config.toml` directly:
+
+```toml
+[mcp_servers.spaceship-mcp]
+command = "npx"
+args = ["-y", "spaceship-mcp"]
+env = { "SPACESHIP_API_KEY" = "your-key", "SPACESHIP_API_SECRET" = "your-secret" }
+```
+
 ### Other MCP Clients
 
 For any MCP-compatible client, use this server configuration:
 
 - **Command:** `npx`
-- **Args:** `["spaceship-mcp"]`
+- **Args:** `["-y", "spaceship-mcp"]`
 - **Environment variables:** `SPACESHIP_API_KEY` and `SPACESHIP_API_SECRET`
 
 ## Configuration
