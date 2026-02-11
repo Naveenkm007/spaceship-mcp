@@ -15,9 +15,10 @@ const getPrompts = (): Record<string, RegisteredPrompt> =>
   (createServer(mockClient) as unknown as ServerWithPrompts)._registeredPrompts;
 
 describe("registerPrompts", () => {
-  it("registers all 5 prompts", () => {
+  it("registers all 5 guided prompts", () => {
     const prompts = getPrompts();
-    expect(Object.keys(prompts)).toHaveLength(5);
+    // 5 guided + 4 completable = 9 total
+    expect(Object.keys(prompts)).toHaveLength(9);
     expect(prompts["setup-domain"]).toBeDefined();
     expect(prompts["audit-domain"]).toBeDefined();
     expect(prompts["setup-email"]).toBeDefined();
