@@ -67,7 +67,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
             info.autoRenew !== undefined ? `Auto-renew: ${info.autoRenew}` : null,
             info.privacyLevel ? `Privacy: ${info.privacyLevel}` : null,
             info.status ? `Status: ${info.status}` : null,
-            info.nameservers ? `Nameservers: ${info.nameservers.join(", ")}` : null,
+            info.nameservers?.hosts ? `Nameservers: ${info.nameservers.hosts.join(", ")}` : null,
           ]
             .filter(Boolean)
             .join("\n"),
