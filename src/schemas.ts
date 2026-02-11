@@ -20,12 +20,6 @@ export const ContactSchema = z.object({
   taxNumber: z.string().max(50).optional().describe("Tax identification number"),
 });
 
-export const ContactsSchema = z.object({
-  registrant: ContactSchema.optional().describe("Registrant contact (domain owner)"),
-  admin: ContactSchema.optional().describe("Administrative contact"),
-  tech: ContactSchema.optional().describe("Technical contact"),
-  billing: ContactSchema.optional().describe("Billing contact"),
-}).describe("Domain contacts. If omitted, account default contacts are used.");
 
 export const WebRecordTypeSchema = z.enum([
   "A", "AAAA", "ALIAS", "CAA", "CNAME", "HTTPS", "MX", "NS", "PTR", "SRV", "SVCB", "TLSA", "TXT",

@@ -20,7 +20,7 @@ A community-built [Model Context Protocol](https://modelcontextprotocol.io) (MCP
 - **DNS alignment analysis** — compare expected vs actual records to catch misconfigurations
 - **WHOIS privacy and contact management** with TLD-specific attribute support
 - **Input validation** via Zod schemas on every tool for safe, predictable operations
-- **326 unit tests** for reliability
+- **344 unit tests** for reliability
 
 ## Supported Clients
 

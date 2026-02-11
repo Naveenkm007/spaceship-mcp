@@ -88,8 +88,9 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
           ...(minPriceEnabled !== undefined ? { minPriceEnabled } : {}),
           ...(minPrice !== undefined ? { minPrice } : {}),
         });
+        const hasPricing = binPrice !== undefined || minPrice !== undefined;
         return toTextResult(
-          `Listed ${result.name} on SellerHub [${result.status ?? "pending"}]. Use update_sellerhub_domain to set pricing.`,
+          `Listed ${result.name} on SellerHub [${result.status ?? "pending"}].${hasPricing ? "" : " Use update_sellerhub_domain to set pricing."}`,
           result as Record<string, unknown>,
         );
       } catch (error) {

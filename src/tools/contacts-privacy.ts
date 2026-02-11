@@ -56,7 +56,7 @@ export const registerContactsPrivacyTools = (server: McpServer, client: Spaceshi
             contact.organization ? `Organization: ${contact.organization}` : null,
             `Email: ${contact.email}`,
             `Address: ${contact.address1}${contact.address2 ? `, ${contact.address2}` : ""}`,
-            `City: ${contact.city}, ${contact.stateProvince ?? ""} ${contact.postalCode}`,
+            `City: ${contact.city}, ${contact.stateProvince ?? ""} ${contact.postalCode ?? ""}`,
             `Country: ${contact.country}`,
             `Phone: ${contact.phone}${contact.phoneExt ? ` ext. ${contact.phoneExt}` : ""}`,
           ]
