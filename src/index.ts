@@ -20,7 +20,10 @@ if (!apiKey || !apiSecret) {
 const cacheTtl = process.env.SPACESHIP_CACHE_TTL !== undefined
   ? parseInt(process.env.SPACESHIP_CACHE_TTL, 10) * 1000
   : undefined;
-const client = new SpaceshipClient(apiKey, apiSecret, undefined, cacheTtl);
+const maxRetries = process.env.SPACESHIP_MAX_RETRIES !== undefined
+  ? parseInt(process.env.SPACESHIP_MAX_RETRIES, 10)
+  : 3;
+const client = new SpaceshipClient(apiKey, apiSecret, undefined, cacheTtl, { maxRetries });
 const toolsets = parseToolsets(process.env.SPACESHIP_TOOLSETS);
 const server = createServer(client, toolsets);
 
