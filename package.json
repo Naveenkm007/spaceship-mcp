@@ -1,8 +1,12 @@
 {
-  "name": "spaceship-mcp-check",
+  "name": "spaceship-mcp",
   "version": "0.1.0",
+  "description": "MCP Server for managing domains and DNS records via the Spaceship API",
   "private": true,
   "type": "module",
+  "bin": {
+    "spaceship-mcp": "dist/index.js"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "start": "node --enable-source-maps dist/index.js",
@@ -19,6 +23,6 @@
     "typescript": "^5.9.2"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   }
 }
