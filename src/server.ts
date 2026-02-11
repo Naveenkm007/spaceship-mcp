@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SpaceshipClient } from "./spaceship-client.js";
 import { registerDnsRecordTools } from "./tools/dns-records.js";
@@ -9,10 +10,13 @@ import { registerSellerHubTools } from "./tools/sellerhub.js";
 import { registerPersonalNameserverTools } from "./tools/personal-nameservers.js";
 import { registerAnalysisTools } from "./tools/analysis.js";
 
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json") as { version: string };
+
 export const createServer = (client: SpaceshipClient): McpServer => {
   const server = new McpServer({
     name: "spaceship-mcp",
-    version: "0.1.0",
+    version,
   });
 
   registerDnsRecordTools(server, client);

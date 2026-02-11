@@ -66,28 +66,10 @@ export class SpaceshipClient {
   }
 
   async listAllDnsRecords(domain: string, orderBy?: OrderBy): Promise<DnsRecord[]> {
-    const pageSize = 500;
-    const all: DnsRecord[] = [];
-    let skip = 0;
-    let total = Number.POSITIVE_INFINITY;
-
-    while (skip < total) {
-      const response = await this.listDnsRecords(domain, {
-        take: pageSize,
-        skip,
-        ...(orderBy ? { orderBy } : {}),
-      });
-
-      all.push(...response.items);
-      total = response.total;
-      skip += response.items.length;
-
-      if (response.items.length === 0) {
-        break;
-      }
-    }
-
-    return all;
+    return this.paginate(
+      500,
+      (take, skip) => this.listDnsRecords(domain, { take, skip, ...(orderBy ? { orderBy } : {}) }),
+    );
   }
 
   async saveDnsRecords(domain: string, records: DnsRecord[]): Promise<void> {
@@ -163,27 +145,10 @@ export class SpaceshipClient {
   }
 
   async listAllDomains(orderBy?: DomainOrderBy): Promise<Domain[]> {
-    const pageSize = 100;
-    const all: Domain[] = [];
-    let skip = 0;
-    let total = Number.POSITIVE_INFINITY;
-
-    while (skip < total) {
-      const response = await this.listDomains({
-        take: pageSize,
-        skip,
-        ...(orderBy ? { orderBy } : {}),
-      });
-      all.push(...response.items);
-      total = response.total;
-      skip += response.items.length;
-
-      if (response.items.length === 0) {
-        break;
-      }
-    }
-
-    return all;
+    return this.paginate(
+      100,
+      (take, skip) => this.listDomains({ take, skip, ...(orderBy ? { orderBy } : {}) }),
+    );
   }
 
   async getDomain(domain: string): Promise<Domain> {
@@ -426,23 +391,7 @@ export class SpaceshipClient {
   }
 
   async listAllSellerHubDomains(): Promise<SellerHubDomain[]> {
-    const pageSize = 100;
-    const all: SellerHubDomain[] = [];
-    let skip = 0;
-    let total = Number.POSITIVE_INFINITY;
-
-    while (skip < total) {
-      const response = await this.listSellerHubDomains({ take: pageSize, skip });
-      all.push(...response.items);
-      total = response.total;
-      skip += response.items.length;
-
-      if (response.items.length === 0) {
-        break;
-      }
-    }
-
-    return all;
+    return this.paginate(100, (take, skip) => this.listSellerHubDomains({ take, skip }));
   }
 
   async createSellerHubDomain(name: string): Promise<SellerHubDomain> {
@@ -633,7 +582,36 @@ export class SpaceshipClient {
     return item;
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  private async paginate<T>(
+    pageSize: number,
+    fetcher: (take: number, skip: number) => Promise<{ items: T[]; total: number }>,
+  ): Promise<T[]> {
+    const all: T[] = [];
+    let skip = 0;
+    let total = Number.POSITIVE_INFINITY;
+
+    while (skip < total) {
+      const response = await fetcher(pageSize, skip);
+      all.push(...response.items);
+      total = response.total;
+      skip += response.items.length;
+
+      if (response.items.length === 0) {
+        break;
+      }
+    }
+
+    return all;
+  }
+
+  private static async parseBody(response: Response): Promise<unknown> {
+    const contentType = response.headers.get("content-type") ?? "";
+    return contentType.includes("application/json")
+      ? response.json().catch(() => null)
+      : response.text().catch(() => "");
+  }
+
+  private async rawRequest(path: string, init?: RequestInit): Promise<Response> {
     const headers = new Headers(init?.headers);
     headers.set("X-API-Key", this.apiKey);
     headers.set("X-API-Secret", this.apiSecret);
@@ -644,59 +622,33 @@ export class SpaceshipClient {
       headers,
     });
 
+    if (response.ok || response.status === 204 || response.status === 202) {
+      return response;
+    }
+
+    throw new SpaceshipApiError(
+      `Spaceship API request failed: ${response.status} ${response.statusText}`,
+      response.status,
+      await SpaceshipClient.parseBody(response),
+    );
+  }
+
+  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const response = await this.rawRequest(path, init);
+
     if (response.status === 204) {
       return null as T;
     }
 
-    const contentType = response.headers.get("content-type") ?? "";
-    const body = contentType.includes("application/json")
-      ? await response.json().catch(() => null)
-      : await response.text().catch(() => "");
-
-    if (!response.ok) {
-      throw new SpaceshipApiError(
-        `Spaceship API request failed: ${response.status} ${response.statusText}`,
-        response.status,
-        body,
-      );
-    }
-
-    return body as T;
+    return await SpaceshipClient.parseBody(response) as T;
   }
 
   private async requestWithAsyncHeader(
     path: string,
     init: RequestInit,
   ): Promise<{ operationId: string }> {
-    const headers = new Headers(init.headers);
-    headers.set("X-API-Key", this.apiKey);
-    headers.set("X-API-Secret", this.apiSecret);
-    headers.set("Content-Type", "application/json");
-
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers,
-    });
-
+    const response = await this.rawRequest(path, init);
     const operationId = response.headers.get("spaceship-async-operationid") ?? "";
-
-    if (response.status === 204 || response.status === 202) {
-      return { operationId };
-    }
-
-    const contentType = response.headers.get("content-type") ?? "";
-    const body = contentType.includes("application/json")
-      ? await response.json().catch(() => null)
-      : await response.text().catch(() => "");
-
-    if (!response.ok) {
-      throw new SpaceshipApiError(
-        `Spaceship API request failed: ${response.status} ${response.statusText}`,
-        response.status,
-        body,
-      );
-    }
-
     return { operationId };
   }
 }

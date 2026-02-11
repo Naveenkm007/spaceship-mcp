@@ -37,6 +37,14 @@ export const WebRecordTypeSchema = z.enum([
 
 const optionalTtl = z.number().int().min(60).max(86400).optional();
 
+const svcbFields = {
+  svcPriority: z.number().int().min(0).max(65535),
+  targetName: z.string().min(1).max(255),
+  svcParams: z.string().optional(),
+  port: z.string().optional(),
+  scheme: z.string().optional(),
+};
+
 export const ExpectedRecordSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("A"),
@@ -73,11 +81,7 @@ export const ExpectedRecordSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("HTTPS"),
     name: z.string().min(1).max(255),
-    svcPriority: z.number().int().min(0).max(65535),
-    targetName: z.string().min(1).max(255),
-    svcParams: z.string().optional(),
-    port: z.string().optional(),
-    scheme: z.string().optional(),
+    ...svcbFields,
     ttl: optionalTtl,
   }),
   z.object({
@@ -113,11 +117,7 @@ export const ExpectedRecordSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("SVCB"),
     name: z.string().min(1).max(255),
-    svcPriority: z.number().int().min(0).max(65535),
-    targetName: z.string().min(1).max(255),
-    svcParams: z.string().optional(),
-    port: z.string().optional(),
-    scheme: z.string().optional(),
+    ...svcbFields,
     ttl: optionalTtl,
   }),
   z.object({

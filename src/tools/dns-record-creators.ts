@@ -1,8 +1,24 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
 import type { SpaceshipClient } from "../spaceship-client.js";
+import type { DnsRecord } from "../types.js";
 import { normalizeDomain } from "../dns-utils.js";
 import { toTextResult, toErrorResult } from "../tool-result.js";
+
+const handleCreateRecord = async (
+  client: SpaceshipClient,
+  domain: string,
+  record: DnsRecord,
+  formatSuccess: (normalizedDomain: string) => string,
+): Promise<ReturnType<typeof toTextResult | typeof toErrorResult>> => {
+  try {
+    const normalizedDomain = normalizeDomain(domain);
+    await client.saveDnsRecords(normalizedDomain, [record]);
+    return toTextResult(formatSuccess(normalizedDomain));
+  } catch (error) {
+    return toErrorResult(error);
+  }
+};
 
 export const registerDnsRecordCreatorTools = (server: McpServer, client: SpaceshipClient): void => {
   server.registerTool(
@@ -21,20 +37,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, address, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "A", address, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created A record: ${name}.${normalizedDomain} -> ${address}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, address, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "A", address, ttl },
+        (d) => `Successfully created A record: ${name}.${d} -> ${address}`),
   );
 
   server.registerTool(
@@ -53,20 +58,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, address, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "AAAA", address, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created AAAA record: ${name}.${normalizedDomain} -> ${address}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, address, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "AAAA", address, ttl },
+        (d) => `Successfully created AAAA record: ${name}.${d} -> ${address}`),
   );
 
   server.registerTool(
@@ -85,20 +79,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, cname, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "CNAME", cname, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created CNAME record: ${name}.${normalizedDomain} -> ${cname}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, cname, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "CNAME", cname, ttl },
+        (d) => `Successfully created CNAME record: ${name}.${d} -> ${cname}`),
   );
 
   server.registerTool(
@@ -118,20 +101,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, priority, exchange, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "MX", preference: priority, exchange, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created MX record: ${name}.${normalizedDomain} -> ${exchange} (priority: ${priority})`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, priority, exchange, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "MX", preference: priority, exchange, ttl },
+        (d) => `Successfully created MX record: ${name}.${d} -> ${exchange} (priority: ${priority})`),
   );
 
   server.registerTool(
@@ -153,20 +125,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, priority, weight, port, target, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "SRV", priority, weight, port, target, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created SRV record: ${name}.${normalizedDomain} -> ${target}:${port} (priority: ${priority}, weight: ${weight})`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, priority, weight, port, target, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "SRV", priority, weight, port, target, ttl },
+        (d) => `Successfully created SRV record: ${name}.${d} -> ${target}:${port} (priority: ${priority}, weight: ${weight})`),
   );
 
   server.registerTool(
@@ -185,20 +146,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, value, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "TXT", value, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created TXT record for ${name}.${normalizedDomain}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, value, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "TXT", value, ttl },
+        (d) => `Successfully created TXT record for ${name}.${d}`),
   );
 
   server.registerTool(
@@ -217,20 +167,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, aliasName, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "ALIAS", aliasName, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created ALIAS record: ${name}.${normalizedDomain} -> ${aliasName}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, aliasName, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "ALIAS", aliasName, ttl },
+        (d) => `Successfully created ALIAS record: ${name}.${d} -> ${aliasName}`),
   );
 
   server.registerTool(
@@ -251,20 +190,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, flag, tag, value, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "CAA", flag, tag, value, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created CAA record: ${name}.${normalizedDomain} ${flag} ${tag} "${value}"`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, flag, tag, value, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "CAA", flag, tag, value, ttl },
+        (d) => `Successfully created CAA record: ${name}.${d} ${flag} ${tag} "${value}"`),
   );
 
   server.registerTool(
@@ -287,20 +215,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, svcPriority, targetName, svcParams, port, scheme, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "HTTPS", svcPriority, targetName, svcParams, port, scheme, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created HTTPS record: ${name}.${normalizedDomain} ${svcPriority} ${targetName}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, svcPriority, targetName, svcParams, port, scheme, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "HTTPS", svcPriority, targetName, svcParams, port, scheme, ttl },
+        (d) => `Successfully created HTTPS record: ${name}.${d} ${svcPriority} ${targetName}`),
   );
 
   server.registerTool(
@@ -319,20 +236,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, nameserver, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "NS", nameserver, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created NS record: ${name}.${normalizedDomain} -> ${nameserver}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, nameserver, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "NS", nameserver, ttl },
+        (d) => `Successfully created NS record: ${name}.${d} -> ${nameserver}`),
   );
 
   server.registerTool(
@@ -351,20 +257,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, pointer, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "PTR", pointer, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created PTR record: ${name}.${normalizedDomain} -> ${pointer}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, pointer, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "PTR", pointer, ttl },
+        (d) => `Successfully created PTR record: ${name}.${d} -> ${pointer}`),
   );
 
   server.registerTool(
@@ -387,20 +282,9 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, svcPriority, targetName, svcParams, port, scheme, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "SVCB", svcPriority, targetName, svcParams, port, scheme, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created SVCB record: ${name}.${normalizedDomain} ${svcPriority} ${targetName}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, svcPriority, targetName, svcParams, port, scheme, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "SVCB", svcPriority, targetName, svcParams, port, scheme, ttl },
+        (d) => `Successfully created SVCB record: ${name}.${d} ${svcPriority} ${targetName}`),
   );
 
   server.registerTool(
@@ -425,19 +309,8 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
     },
-    async ({ domain, name, port, protocol, usage, selector, matching, associationData, scheme, ttl }) => {
-      try {
-        const normalizedDomain = normalizeDomain(domain);
-        await client.saveDnsRecords(normalizedDomain, [
-          { name, type: "TLSA", port, protocol, usage, selector, matching, associationData, scheme, ttl },
-        ]);
-
-        return toTextResult(
-          `Successfully created TLSA record: ${name}.${normalizedDomain} ${usage} ${selector} ${matching}`,
-        );
-      } catch (error) {
-        return toErrorResult(error);
-      }
-    },
+    async ({ domain, name, port, protocol, usage, selector, matching, associationData, scheme, ttl }) =>
+      handleCreateRecord(client, domain, { name, type: "TLSA", port, protocol, usage, selector, matching, associationData, scheme, ttl },
+        (d) => `Successfully created TLSA record: ${name}.${d} ${usage} ${selector} ${matching}`),
   );
 };

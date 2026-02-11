@@ -1,13 +1,11 @@
 import type { DnsRecord } from "./types.js";
 
-export const normalizeDomain = (input: string): string =>
+const normalize = (input: string): string =>
   input.trim().replace(/\.$/, "").toLowerCase();
 
-export const normalizeName = (input: string): string =>
-  input.trim().replace(/\.$/, "").toLowerCase();
-
-export const normalizeHost = (input: string): string =>
-  input.trim().replace(/\.$/, "").toLowerCase();
+export const normalizeDomain = normalize;
+export const normalizeName = normalize;
+export const normalizeHost = normalize;
 
 export const recordComparableValue = (record: DnsRecord): string => {
   const type = record.type.toUpperCase();
