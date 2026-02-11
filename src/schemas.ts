@@ -1,39 +1,73 @@
 import * as z from "zod/v4";
 import type { DnsRecord } from "./types.js";
 
-export const WebRecordTypeSchema = z.enum(["A", "AAAA", "CNAME", "MX", "TXT", "SRV"]);
+export const WebRecordTypeSchema = z.enum([
+  "A", "AAAA", "ALIAS", "CAA", "CNAME", "HTTPS", "MX", "NS", "PTR", "SRV", "SVCB", "TLSA", "TXT",
+]);
+
+const optionalTtl = z.number().int().min(60).max(86400).optional();
 
 export const ExpectedRecordSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("A"),
     name: z.string().min(1).max(255),
     address: z.string().min(7).max(45),
-    ttl: z.number().int().min(60).max(3600).optional(),
+    ttl: optionalTtl,
   }),
   z.object({
     type: z.literal("AAAA"),
     name: z.string().min(1).max(255),
     address: z.string().min(2).max(45),
-    ttl: z.number().int().min(60).max(3600).optional(),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("ALIAS"),
+    name: z.string().min(1).max(255),
+    aliasName: z.string().min(1).max(255),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("CAA"),
+    name: z.string().min(1).max(255),
+    flag: z.number().int().min(0).max(255),
+    tag: z.string().min(1).max(255),
+    value: z.string().min(1).max(65535),
+    ttl: optionalTtl,
   }),
   z.object({
     type: z.literal("CNAME"),
     name: z.string().min(1).max(255),
     cname: z.string().min(1).max(255),
-    ttl: z.number().int().min(60).max(3600).optional(),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("HTTPS"),
+    name: z.string().min(1).max(255),
+    svcPriority: z.number().int().min(0).max(65535),
+    targetName: z.string().min(1).max(255),
+    svcParams: z.string().optional(),
+    port: z.string().optional(),
+    scheme: z.string().optional(),
+    ttl: optionalTtl,
   }),
   z.object({
     type: z.literal("MX"),
     name: z.string().min(1).max(255),
     exchange: z.string().min(1).max(255),
     preference: z.number().int().min(0).max(65535),
-    ttl: z.number().int().min(60).max(3600).optional(),
+    ttl: optionalTtl,
   }),
   z.object({
-    type: z.literal("TXT"),
+    type: z.literal("NS"),
     name: z.string().min(1).max(255),
-    value: z.string().min(1).max(65535),
-    ttl: z.number().int().min(60).max(3600).optional(),
+    nameserver: z.string().min(1).max(255),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("PTR"),
+    name: z.string().min(1).max(255),
+    pointer: z.string().min(1).max(255),
+    ttl: optionalTtl,
   }),
   z.object({
     type: z.literal("SRV"),
@@ -44,7 +78,35 @@ export const ExpectedRecordSchema = z.discriminatedUnion("type", [
     weight: z.number().int().min(0).max(65535),
     port: z.number().int().min(1).max(65535),
     target: z.string().min(1).max(255),
-    ttl: z.number().int().min(60).max(3600).optional(),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("SVCB"),
+    name: z.string().min(1).max(255),
+    svcPriority: z.number().int().min(0).max(65535),
+    targetName: z.string().min(1).max(255),
+    svcParams: z.string().optional(),
+    port: z.string().optional(),
+    scheme: z.string().optional(),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("TLSA"),
+    name: z.string().min(1).max(255),
+    port: z.string().min(1),
+    protocol: z.string().min(2).max(63),
+    usage: z.number().int().min(0).max(255),
+    selector: z.number().int().min(0).max(255),
+    matching: z.number().int().min(0).max(255),
+    associationData: z.string().min(1),
+    scheme: z.string().optional(),
+    ttl: optionalTtl,
+  }),
+  z.object({
+    type: z.literal("TXT"),
+    name: z.string().min(1).max(255),
+    value: z.string().min(1).max(65535),
+    ttl: optionalTtl,
   }),
 ]);
 
@@ -59,9 +121,28 @@ export const expectedToRecord = (expected: z.infer<typeof ExpectedRecordSchema>)
         { type: expected.type, name: expected.name, address: expected.address },
         expected.ttl,
       );
+    case "ALIAS":
+      return withOptionalTtl(
+        { type: "ALIAS", name: expected.name, aliasName: expected.aliasName },
+        expected.ttl,
+      );
+    case "CAA":
+      return withOptionalTtl(
+        { type: "CAA", name: expected.name, flag: expected.flag, tag: expected.tag, value: expected.value },
+        expected.ttl,
+      );
     case "CNAME":
       return withOptionalTtl(
         { type: "CNAME", name: expected.name, cname: expected.cname },
+        expected.ttl,
+      );
+    case "HTTPS":
+      return withOptionalTtl(
+        {
+          type: "HTTPS", name: expected.name,
+          svcPriority: expected.svcPriority, targetName: expected.targetName,
+          svcParams: expected.svcParams, port: expected.port, scheme: expected.scheme,
+        },
         expected.ttl,
       );
     case "MX":
@@ -69,23 +150,49 @@ export const expectedToRecord = (expected: z.infer<typeof ExpectedRecordSchema>)
         { type: "MX", name: expected.name, exchange: expected.exchange, preference: expected.preference },
         expected.ttl,
       );
-    case "TXT":
+    case "NS":
       return withOptionalTtl(
-        { type: "TXT", name: expected.name, value: expected.value },
+        { type: "NS", name: expected.name, nameserver: expected.nameserver },
+        expected.ttl,
+      );
+    case "PTR":
+      return withOptionalTtl(
+        { type: "PTR", name: expected.name, pointer: expected.pointer },
         expected.ttl,
       );
     case "SRV":
       return withOptionalTtl(
         {
-          type: "SRV",
-          name: expected.name,
-          service: expected.service,
-          protocol: expected.protocol,
-          priority: expected.priority,
-          weight: expected.weight,
-          port: expected.port,
-          target: expected.target,
+          type: "SRV", name: expected.name,
+          service: expected.service, protocol: expected.protocol,
+          priority: expected.priority, weight: expected.weight,
+          port: expected.port, target: expected.target,
         },
+        expected.ttl,
+      );
+    case "SVCB":
+      return withOptionalTtl(
+        {
+          type: "SVCB", name: expected.name,
+          svcPriority: expected.svcPriority, targetName: expected.targetName,
+          svcParams: expected.svcParams, port: expected.port, scheme: expected.scheme,
+        },
+        expected.ttl,
+      );
+    case "TLSA":
+      return withOptionalTtl(
+        {
+          type: "TLSA", name: expected.name,
+          port: expected.port, protocol: expected.protocol,
+          usage: expected.usage, selector: expected.selector,
+          matching: expected.matching, associationData: expected.associationData,
+          scheme: expected.scheme,
+        },
+        expected.ttl,
+      );
+    case "TXT":
+      return withOptionalTtl(
+        { type: "TXT", name: expected.name, value: expected.value },
         expected.ttl,
       );
     default:

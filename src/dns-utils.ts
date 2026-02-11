@@ -16,12 +16,27 @@ export const recordComparableValue = (record: DnsRecord): string => {
     case "A":
     case "AAAA":
       return String(record.address ?? "").trim();
+    case "ALIAS":
+      return normalizeHost(String(record.aliasName ?? ""));
+    case "CAA":
+      return `${Number(record.flag ?? 0)}:${String(record.tag ?? "")}:${String(record.value ?? "")}`;
     case "CNAME":
       return normalizeHost(String(record.cname ?? ""));
+    case "HTTPS":
+    case "SVCB":
+      return [
+        String(record.svcPriority ?? ""),
+        normalizeHost(String(record.targetName ?? "")),
+        String(record.svcParams ?? ""),
+        String(record.port ?? ""),
+        String(record.scheme ?? ""),
+      ].join(":");
     case "MX":
       return `${Number(record.preference ?? -1)}:${normalizeHost(String(record.exchange ?? ""))}`;
-    case "TXT":
-      return String(record.value ?? "");
+    case "NS":
+      return normalizeHost(String(record.nameserver ?? ""));
+    case "PTR":
+      return normalizeHost(String(record.pointer ?? ""));
     case "SRV":
       return [
         String(record.service ?? ""),
@@ -31,6 +46,17 @@ export const recordComparableValue = (record: DnsRecord): string => {
         String(record.port ?? ""),
         normalizeHost(String(record.target ?? "")),
       ].join(":");
+    case "TLSA":
+      return [
+        String(record.port ?? ""),
+        String(record.protocol ?? ""),
+        String(record.usage ?? ""),
+        String(record.selector ?? ""),
+        String(record.matching ?? ""),
+        String(record.associationData ?? "").toLowerCase().replace(/\s/g, ""),
+      ].join(":");
+    case "TXT":
+      return String(record.value ?? "");
     default:
       return "";
   }
@@ -52,12 +78,28 @@ export const extractComparableFields = (record: DnsRecord): Record<string, unkno
     case "A":
     case "AAAA":
       return { ...common, address: record.address };
+    case "ALIAS":
+      return { ...common, aliasName: record.aliasName };
+    case "CAA":
+      return { ...common, flag: record.flag, tag: record.tag, value: record.value };
     case "CNAME":
       return { ...common, cname: record.cname };
+    case "HTTPS":
+    case "SVCB":
+      return {
+        ...common,
+        svcPriority: record.svcPriority,
+        targetName: record.targetName,
+        svcParams: record.svcParams,
+        port: record.port,
+        scheme: record.scheme,
+      };
     case "MX":
       return { ...common, exchange: record.exchange, preference: record.preference };
-    case "TXT":
-      return { ...common, value: record.value };
+    case "NS":
+      return { ...common, nameserver: record.nameserver };
+    case "PTR":
+      return { ...common, pointer: record.pointer };
     case "SRV":
       return {
         ...common,
@@ -68,6 +110,19 @@ export const extractComparableFields = (record: DnsRecord): Record<string, unkno
         port: record.port,
         target: record.target,
       };
+    case "TLSA":
+      return {
+        ...common,
+        port: record.port,
+        protocol: record.protocol,
+        usage: record.usage,
+        selector: record.selector,
+        matching: record.matching,
+        associationData: record.associationData,
+        scheme: record.scheme,
+      };
+    case "TXT":
+      return { ...common, value: record.value };
     default:
       return { ...common };
   }

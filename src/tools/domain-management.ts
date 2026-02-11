@@ -10,6 +10,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "List Domains",
       description: "List all domains in the Spaceship account.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         fetchAll: z.boolean().default(true).describe("Fetch all pages."),
         take: z.number().int().min(1).max(100).default(100).describe("Items per page when fetchAll=false."),
@@ -48,6 +49,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "Get Domain Details",
       description: "Get detailed information about a specific domain.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
       }),
@@ -82,6 +84,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "Check Domain Availability",
       description: "Check if one or more domains are available for registration.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         domains: z
           .array(z.string().min(4).max(255))
@@ -121,6 +124,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "Update Nameservers",
       description: "Update the nameservers for a domain.",
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         nameservers: z
@@ -149,6 +153,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "Set Auto-Renew",
       description: "Enable or disable auto-renewal for a domain.",
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         enabled: z.boolean().describe("Enable (true) or disable (false) auto-renewal"),
@@ -173,6 +178,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "Set Transfer Lock",
       description: "Enable or disable transfer lock for a domain.",
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         locked: z.boolean().describe("Lock (true) or unlock (false) the domain"),
@@ -197,6 +203,7 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
     {
       title: "Get Auth/EPP Code",
       description: "Retrieve the authorization/EPP code for domain transfer.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
       }),

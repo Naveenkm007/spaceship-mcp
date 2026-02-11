@@ -21,6 +21,7 @@ export const registerAnalysisTools = (server: McpServer, client: SpaceshipClient
       title: "Check DNS Alignment",
       description:
         "Compare expected DNS records to current Spaceship records. Returns missing and unexpected records.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255),
         expectedRecords: z.array(ExpectedRecordSchema).min(1),
@@ -92,6 +93,7 @@ export const registerAnalysisTools = (server: McpServer, client: SpaceshipClient
       title: "Analyze Fly Cutover",
       description:
         "Analyze current web DNS records for root/www and propose upserts/deletes for a Vercel -> Fly cutover. Read-only, does not modify DNS.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255),
         flyApexA: z.string().optional().describe("Fly IPv4 for root @ record"),

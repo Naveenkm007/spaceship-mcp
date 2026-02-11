@@ -12,6 +12,7 @@ export const registerDnsRecordTools = (server: McpServer, client: SpaceshipClien
       title: "List DNS Records",
       description:
         "List all DNS records for a domain. Uses pagination and can fetch all pages automatically.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("Domain name, e.g. example.com"),
         fetchAll: z.boolean().default(true).describe("Fetch all pages (recommended)."),
@@ -66,16 +67,40 @@ export const registerDnsRecordTools = (server: McpServer, client: SpaceshipClien
     {
       title: "Create DNS Record",
       description:
-        'Create DNS records for a domain. Supports all record types. For MX use "priority exchange" value format, for SRV use "priority weight port target".',
+        "Create DNS records for a domain via PUT with force overwrite — existing records with the same name/type will be replaced. Supports all record types: A, AAAA, ALIAS, CAA, CNAME, HTTPS, MX, NS, PTR, SRV, SVCB, TLSA, TXT. Use type-specific fields (e.g. address for A/AAAA, cname for CNAME, exchange+preference for MX, etc.) for best results.",
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         records: z
           .array(
             z.object({
               name: z.string().describe("Record name (subdomain, use @ for root)"),
-              type: z.string().describe("Record type (A, AAAA, CNAME, MX, TXT, SRV, etc.)"),
-              value: z.string().describe("Record value"),
+              type: z.string().describe("Record type (A, AAAA, ALIAS, CAA, CNAME, HTTPS, MX, NS, PTR, SRV, SVCB, TLSA, TXT)"),
               ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+              value: z.string().optional().describe("Generic value (TXT, CAA value, or fallback)"),
+              address: z.string().optional().describe("IPv4/IPv6 address (A, AAAA)"),
+              aliasName: z.string().optional().describe("Alias target (ALIAS)"),
+              flag: z.number().int().optional().describe("Flag 0 or 128 (CAA)"),
+              tag: z.string().optional().describe('Tag e.g. "issue", "issuewild", "iodef" (CAA)'),
+              cname: z.string().optional().describe("Canonical name (CNAME)"),
+              svcPriority: z.number().int().optional().describe("Service priority 0-65535 (HTTPS, SVCB)"),
+              targetName: z.string().optional().describe("Target name (HTTPS, SVCB)"),
+              svcParams: z.string().optional().describe("SvcParams string (HTTPS, SVCB)"),
+              exchange: z.string().optional().describe("Mail server hostname (MX)"),
+              preference: z.number().int().optional().describe("MX preference 0-65535"),
+              nameserver: z.string().optional().describe("Nameserver hostname (NS)"),
+              pointer: z.string().optional().describe("Pointer target (PTR)"),
+              service: z.string().optional().describe("Service label e.g. _sip (SRV)"),
+              protocol: z.string().optional().describe("Protocol label e.g. _tcp (SRV, TLSA)"),
+              priority: z.number().int().optional().describe("Priority 0-65535 (SRV)"),
+              weight: z.number().int().optional().describe("Weight 0-65535 (SRV)"),
+              port: z.union([z.number().int(), z.string()]).optional().describe("Port number (SRV) or port string like _443 (HTTPS, SVCB, TLSA)"),
+              target: z.string().optional().describe("Target hostname (SRV)"),
+              scheme: z.string().optional().describe("Scheme e.g. _https, _tcp (HTTPS, SVCB, TLSA)"),
+              usage: z.number().int().optional().describe("Usage 0-255 (TLSA)"),
+              selector: z.number().int().optional().describe("Selector 0-255 (TLSA)"),
+              matching: z.number().int().optional().describe("Matching type 0-255 (TLSA)"),
+              associationData: z.string().optional().describe("Certificate association hex data (TLSA)"),
             }),
           )
           .min(1),
@@ -84,12 +109,34 @@ export const registerDnsRecordTools = (server: McpServer, client: SpaceshipClien
     async ({ domain, records }) => {
       try {
         const normalizedDomain = normalizeDomain(domain);
-        const dnsRecords: DnsRecord[] = records.map((r) => ({
-          name: r.name,
-          type: r.type,
-          value: r.value,
-          ttl: r.ttl,
-        }));
+        const dnsRecords: DnsRecord[] = records.map((r) => {
+          const record: DnsRecord = { name: r.name, type: r.type, ttl: r.ttl };
+          if (r.value !== undefined) record.value = r.value;
+          if (r.address !== undefined) record.address = r.address;
+          if (r.aliasName !== undefined) record.aliasName = r.aliasName;
+          if (r.flag !== undefined) record.flag = r.flag;
+          if (r.tag !== undefined) record.tag = r.tag;
+          if (r.cname !== undefined) record.cname = r.cname;
+          if (r.svcPriority !== undefined) record.svcPriority = r.svcPriority;
+          if (r.targetName !== undefined) record.targetName = r.targetName;
+          if (r.svcParams !== undefined) record.svcParams = r.svcParams;
+          if (r.exchange !== undefined) record.exchange = r.exchange;
+          if (r.preference !== undefined) record.preference = r.preference;
+          if (r.nameserver !== undefined) record.nameserver = r.nameserver;
+          if (r.pointer !== undefined) record.pointer = r.pointer;
+          if (r.service !== undefined) record.service = r.service;
+          if (r.protocol !== undefined) record.protocol = r.protocol;
+          if (r.priority !== undefined) record.priority = r.priority;
+          if (r.weight !== undefined) record.weight = r.weight;
+          if (r.port !== undefined) record.port = r.port;
+          if (r.target !== undefined) record.target = r.target;
+          if (r.scheme !== undefined) record.scheme = r.scheme;
+          if (r.usage !== undefined) record.usage = r.usage;
+          if (r.selector !== undefined) record.selector = r.selector;
+          if (r.matching !== undefined) record.matching = r.matching;
+          if (r.associationData !== undefined) record.associationData = r.associationData;
+          return record;
+        });
 
         await client.saveDnsRecords(normalizedDomain, dnsRecords);
 
@@ -107,16 +154,40 @@ export const registerDnsRecordTools = (server: McpServer, client: SpaceshipClien
     {
       title: "Update DNS Records",
       description:
-        'Update DNS records for a domain. Uses force overwrite. For MX use "priority exchange" value format, for SRV use "priority weight port target".',
+        "Update DNS records for a domain via PUT with force overwrite — functionally identical to create_dns_record. Existing records with the same name/type will be replaced. Supports all record types: A, AAAA, ALIAS, CAA, CNAME, HTTPS, MX, NS, PTR, SRV, SVCB, TLSA, TXT.",
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         records: z
           .array(
             z.object({
               name: z.string().describe("Record name (subdomain, use @ for root)"),
-              type: z.string().describe("Record type (A, AAAA, CNAME, MX, TXT, SRV, etc.)"),
-              value: z.string().describe("Record value"),
+              type: z.string().describe("Record type (A, AAAA, ALIAS, CAA, CNAME, HTTPS, MX, NS, PTR, SRV, SVCB, TLSA, TXT)"),
               ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+              value: z.string().optional().describe("Generic value (TXT, CAA value, or fallback)"),
+              address: z.string().optional().describe("IPv4/IPv6 address (A, AAAA)"),
+              aliasName: z.string().optional().describe("Alias target (ALIAS)"),
+              flag: z.number().int().optional().describe("Flag 0 or 128 (CAA)"),
+              tag: z.string().optional().describe('Tag e.g. "issue", "issuewild", "iodef" (CAA)'),
+              cname: z.string().optional().describe("Canonical name (CNAME)"),
+              svcPriority: z.number().int().optional().describe("Service priority 0-65535 (HTTPS, SVCB)"),
+              targetName: z.string().optional().describe("Target name (HTTPS, SVCB)"),
+              svcParams: z.string().optional().describe("SvcParams string (HTTPS, SVCB)"),
+              exchange: z.string().optional().describe("Mail server hostname (MX)"),
+              preference: z.number().int().optional().describe("MX preference 0-65535"),
+              nameserver: z.string().optional().describe("Nameserver hostname (NS)"),
+              pointer: z.string().optional().describe("Pointer target (PTR)"),
+              service: z.string().optional().describe("Service label e.g. _sip (SRV)"),
+              protocol: z.string().optional().describe("Protocol label e.g. _tcp (SRV, TLSA)"),
+              priority: z.number().int().optional().describe("Priority 0-65535 (SRV)"),
+              weight: z.number().int().optional().describe("Weight 0-65535 (SRV)"),
+              port: z.union([z.number().int(), z.string()]).optional().describe("Port number (SRV) or port string like _443 (HTTPS, SVCB, TLSA)"),
+              target: z.string().optional().describe("Target hostname (SRV)"),
+              scheme: z.string().optional().describe("Scheme e.g. _https, _tcp (HTTPS, SVCB, TLSA)"),
+              usage: z.number().int().optional().describe("Usage 0-255 (TLSA)"),
+              selector: z.number().int().optional().describe("Selector 0-255 (TLSA)"),
+              matching: z.number().int().optional().describe("Matching type 0-255 (TLSA)"),
+              associationData: z.string().optional().describe("Certificate association hex data (TLSA)"),
             }),
           )
           .min(1),
@@ -125,12 +196,34 @@ export const registerDnsRecordTools = (server: McpServer, client: SpaceshipClien
     async ({ domain, records }) => {
       try {
         const normalizedDomain = normalizeDomain(domain);
-        const dnsRecords: DnsRecord[] = records.map((r) => ({
-          name: r.name,
-          type: r.type,
-          value: r.value,
-          ttl: r.ttl,
-        }));
+        const dnsRecords: DnsRecord[] = records.map((r) => {
+          const record: DnsRecord = { name: r.name, type: r.type, ttl: r.ttl };
+          if (r.value !== undefined) record.value = r.value;
+          if (r.address !== undefined) record.address = r.address;
+          if (r.aliasName !== undefined) record.aliasName = r.aliasName;
+          if (r.flag !== undefined) record.flag = r.flag;
+          if (r.tag !== undefined) record.tag = r.tag;
+          if (r.cname !== undefined) record.cname = r.cname;
+          if (r.svcPriority !== undefined) record.svcPriority = r.svcPriority;
+          if (r.targetName !== undefined) record.targetName = r.targetName;
+          if (r.svcParams !== undefined) record.svcParams = r.svcParams;
+          if (r.exchange !== undefined) record.exchange = r.exchange;
+          if (r.preference !== undefined) record.preference = r.preference;
+          if (r.nameserver !== undefined) record.nameserver = r.nameserver;
+          if (r.pointer !== undefined) record.pointer = r.pointer;
+          if (r.service !== undefined) record.service = r.service;
+          if (r.protocol !== undefined) record.protocol = r.protocol;
+          if (r.priority !== undefined) record.priority = r.priority;
+          if (r.weight !== undefined) record.weight = r.weight;
+          if (r.port !== undefined) record.port = r.port;
+          if (r.target !== undefined) record.target = r.target;
+          if (r.scheme !== undefined) record.scheme = r.scheme;
+          if (r.usage !== undefined) record.usage = r.usage;
+          if (r.selector !== undefined) record.selector = r.selector;
+          if (r.matching !== undefined) record.matching = r.matching;
+          if (r.associationData !== undefined) record.associationData = r.associationData;
+          return record;
+        });
 
         await client.saveDnsRecords(normalizedDomain, dnsRecords);
 
@@ -148,6 +241,7 @@ export const registerDnsRecordTools = (server: McpServer, client: SpaceshipClien
     {
       title: "Delete DNS Records",
       description: "Delete DNS records from a domain by name and type.",
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         records: z

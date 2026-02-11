@@ -13,9 +13,10 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         name: z.string().describe('Record name (subdomain, use "@" for root)'),
-        address: z.string().describe('IPv4 address (e.g. "192.0.2.1")'),
+        address: z.string().ipv4().describe('IPv4 address (e.g. "192.0.2.1")'),
         ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
       }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ domain, name, address, ttl }) => {
       try {
@@ -41,9 +42,10 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name"),
         name: z.string().describe('Record name (subdomain, use "@" for root)'),
-        address: z.string().describe('IPv6 address (e.g. "2001:db8::1")'),
+        address: z.string().ipv6().describe('IPv6 address (e.g. "2001:db8::1")'),
         ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
       }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ domain, name, address, ttl }) => {
       try {
@@ -72,6 +74,7 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
         cname: z.string().describe('Canonical name to point to (e.g. "example.com")'),
         ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
       }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ domain, name, cname, ttl }) => {
       try {
@@ -101,6 +104,7 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
         exchange: z.string().describe('Mail server hostname (e.g. "mail.example.com")'),
         ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
       }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ domain, name, priority, exchange, ttl }) => {
       try {
@@ -132,6 +136,7 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
         target: z.string().describe('Target hostname (e.g. "autodiscover.example.com")'),
         ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
       }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ domain, name, priority, weight, port, target, ttl }) => {
       try {
@@ -160,6 +165,7 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
         value: z.string().describe('Text value (e.g. "v=spf1 include:example.com -all")'),
         ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
       }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },
     async ({ domain, name, value, ttl }) => {
       try {
@@ -170,6 +176,225 @@ export const registerDnsRecordCreatorTools = (server: McpServer, client: Spacesh
 
         return toTextResult(
           `Successfully created TXT record for ${name}.${normalizedDomain}`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_alias_record",
+    {
+      title: "Create ALIAS Record",
+      description: "Create an ALIAS record (CNAME flattening at zone apex) for a domain.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe('Record name (use "@" for root)'),
+        aliasName: z.string().describe('Alias target hostname (e.g. "example.herokudns.com")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, aliasName, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "ALIAS", aliasName, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created ALIAS record: ${name}.${normalizedDomain} -> ${aliasName}`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_caa_record",
+    {
+      title: "Create CAA Record",
+      description: "Create a CAA record (Certificate Authority Authorization) for a domain. Controls which CAs can issue certificates.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe('Record name (use "@" for root)'),
+        flag: z.number().int().min(0).max(255).describe("Flag (0 = non-critical, 128 = critical)"),
+        tag: z.string().describe('Tag: "issue", "issuewild", or "iodef"'),
+        value: z.string().describe('CA domain or reporting URL (e.g. "letsencrypt.org")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, flag, tag, value, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "CAA", flag, tag, value, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created CAA record: ${name}.${normalizedDomain} ${flag} ${tag} "${value}"`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_https_record",
+    {
+      title: "Create HTTPS Record",
+      description: "Create an HTTPS record (SVCB-compatible for HTTPS) for a domain. Used for HTTPS service binding and ECH.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe('Record name (use "@" for root)'),
+        svcPriority: z.number().int().min(0).max(65535).describe("Service priority (0 = alias mode, 1+ = service mode)"),
+        targetName: z.string().describe('Target name (e.g. "cdn.example.com", use "." for same name)'),
+        svcParams: z.string().optional().describe('SvcParams string (e.g. "alpn=h2,h3")'),
+        port: z.string().optional().describe('Port string (e.g. "_443")'),
+        scheme: z.string().optional().describe('Scheme label (e.g. "_https")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, svcPriority, targetName, svcParams, port, scheme, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "HTTPS", svcPriority, targetName, svcParams, port, scheme, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created HTTPS record: ${name}.${normalizedDomain} ${svcPriority} ${targetName}`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_ns_record",
+    {
+      title: "Create NS Record",
+      description: "Create an NS record (nameserver delegation) for a domain.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe("Record name (subdomain to delegate)"),
+        nameserver: z.string().describe('Nameserver hostname (e.g. "ns1.example.com")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, nameserver, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "NS", nameserver, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created NS record: ${name}.${normalizedDomain} -> ${nameserver}`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_ptr_record",
+    {
+      title: "Create PTR Record",
+      description: "Create a PTR record (reverse DNS pointer) for a domain.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe("Record name"),
+        pointer: z.string().describe('Pointer target hostname (e.g. "host.example.com")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, pointer, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "PTR", pointer, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created PTR record: ${name}.${normalizedDomain} -> ${pointer}`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_svcb_record",
+    {
+      title: "Create SVCB Record",
+      description: "Create an SVCB record (general service binding) for a domain.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe("Record name"),
+        svcPriority: z.number().int().min(0).max(65535).describe("Service priority (0 = alias mode, 1+ = service mode)"),
+        targetName: z.string().describe('Target name (e.g. "svc.example.com")'),
+        svcParams: z.string().optional().describe("SvcParams string"),
+        port: z.string().optional().describe('Port string (e.g. "_443")'),
+        scheme: z.string().optional().describe('Scheme label (e.g. "_tcp")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, svcPriority, targetName, svcParams, port, scheme, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "SVCB", svcPriority, targetName, svcParams, port, scheme, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created SVCB record: ${name}.${normalizedDomain} ${svcPriority} ${targetName}`,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_tlsa_record",
+    {
+      title: "Create TLSA Record",
+      description: "Create a TLSA record (TLS certificate association / DANE) for a domain.",
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The domain name"),
+        name: z.string().describe("Record name"),
+        port: z.string().describe('Port string (e.g. "_443")'),
+        protocol: z.string().describe('Protocol label (e.g. "_tcp")'),
+        usage: z.number().int().min(0).max(255).describe("Usage (0=CA, 1=EE-PKIX, 2=TA, 3=EE)"),
+        selector: z.number().int().min(0).max(255).describe("Selector (0=full cert, 1=public key)"),
+        matching: z.number().int().min(0).max(255).describe("Matching type (0=exact, 1=SHA-256, 2=SHA-512)"),
+        associationData: z.string().describe("Certificate association data (hex string)"),
+        scheme: z.string().optional().describe('Scheme label (e.g. "_tcp")'),
+        ttl: z.number().int().min(60).max(86400).default(3600).describe("TTL in seconds"),
+      }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    },
+    async ({ domain, name, port, protocol, usage, selector, matching, associationData, scheme, ttl }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        await client.saveDnsRecords(normalizedDomain, [
+          { name, type: "TLSA", port, protocol, usage, selector, matching, associationData, scheme, ttl },
+        ]);
+
+        return toTextResult(
+          `Successfully created TLSA record: ${name}.${normalizedDomain} ${usage} ${selector} ${matching}`,
         );
       } catch (error) {
         return toErrorResult(error);
