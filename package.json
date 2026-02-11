@@ -1,7 +1,7 @@
 {
   "name": "spaceship-mcp",
   "version": "0.1.0",
-  "description": "MCP Server for managing domains and DNS records via the Spaceship API",
+  "description": "MCP server for managing domains, DNS records, and marketplace listings via the Spaceship API",
   "type": "module",
   "bin": {
     "spaceship-mcp": "dist/index.js"
@@ -16,7 +16,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "prepublishOnly": "pnpm build",
-    "release": "release-it"
+    "release": "GITHUB_TOKEN=$(gh auth token) release-it"
   },
   "repository": {
     "type": "git",
@@ -24,13 +24,25 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
     "spaceship",
     "dns",
+    "dns-management",
     "domain",
-    "model-context-protocol"
+    "domain-management",
+    "registrar",
+    "whois",
+    "model-context-protocol",
+    "automation",
+    "ai",
+    "claude",
+    "llm"
   ],
   "author": "Bart Waardenburg",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bartwaardenburg/spaceship-mcp/issues"
+  },
   "homepage": "https://github.com/bartwaardenburg/spaceship-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
