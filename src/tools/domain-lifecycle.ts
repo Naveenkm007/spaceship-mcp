@@ -2,8 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
 import type { SpaceshipClient } from "../spaceship-client.js";
 import { normalizeDomain } from "../dns-utils.js";
-import { ContactsSchema } from "../schemas.js";
 import { toTextResult, toErrorResult } from "../tool-result.js";
+
+const ContactIdsSchema = z.object({
+  registrant: z.string().min(1).optional().describe("Registrant contact ID"),
+  admin: z.string().min(1).optional().describe("Administrative contact ID"),
+  tech: z.string().min(1).optional().describe("Technical contact ID"),
+  billing: z.string().min(1).optional().describe("Billing contact ID"),
+}).describe("Domain contacts by ID. Use save_contact first to create contacts and obtain IDs.");
 
 export const registerDomainLifecycleTools = (server: McpServer, client: SpaceshipClient): void => {
   server.registerTool(
@@ -21,7 +27,7 @@ export const registerDomainLifecycleTools = (server: McpServer, client: Spaceshi
         years: z.number().int().min(1).max(10).default(1).describe("Number of years to register for (1-10, default 1)"),
         autoRenew: z.boolean().default(true).describe("Enable auto-renewal (default true)"),
         privacyLevel: z.enum(["high", "public"]).default("high").describe("Privacy protection level: 'high' hides WHOIS info, 'public' shows it (default 'high')"),
-        contacts: ContactsSchema.optional(),
+        contacts: ContactIdsSchema.optional(),
       }),
     },
     async ({ domain, years, autoRenew, privacyLevel, contacts }) => {
@@ -138,7 +144,7 @@ export const registerDomainLifecycleTools = (server: McpServer, client: Spaceshi
         authCode: z.string().max(255).optional().describe("Authorization/EPP code from the current registrar. Required for most TLDs, but some (e.g. .uk) do not need one."),
         autoRenew: z.boolean().default(true).describe("Enable auto-renewal after transfer (default true)"),
         privacyLevel: z.enum(["high", "public"]).default("high").describe("Privacy protection level: 'high' hides WHOIS info, 'public' shows it (default 'high')"),
-        contacts: ContactsSchema.optional(),
+        contacts: ContactIdsSchema.optional(),
       }),
     },
     async ({ domain, authCode, autoRenew, privacyLevel, contacts }) => {

@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as z from "zod/v4";
 import type { SpaceshipClient } from "../spaceship-client.js";
 import { normalizeDomain } from "../dns-utils.js";
-import { ContactSchema, ContactAttributeSchema } from "../schemas.js";
+import { ContactSchema } from "../schemas.js";
 import { toTextResult, toErrorResult } from "../tool-result.js";
 
 export const registerContactsPrivacyTools = (server: McpServer, client: SpaceshipClient): void => {
@@ -17,18 +17,18 @@ export const registerContactsPrivacyTools = (server: McpServer, client: Spaceshi
     },
     async (input) => {
       try {
-        const contact = await client.saveContact(input);
+        const result = await client.saveContact(input);
         return toTextResult(
           [
             `Contact saved successfully.`,
-            `ID: ${contact.contactId ?? "N/A"}`,
-            `Name: ${contact.firstName} ${contact.lastName}`,
-            contact.organization ? `Organization: ${contact.organization}` : null,
-            `Email: ${contact.email}`,
+            `Contact ID: ${result.contactId}`,
+            `Name: ${input.firstName} ${input.lastName}`,
+            input.organization ? `Organization: ${input.organization}` : null,
+            `Email: ${input.email}`,
           ]
             .filter(Boolean)
             .join("\n"),
-          contact as unknown as Record<string, unknown>,
+          { contactId: result.contactId, ...input } as Record<string, unknown>,
         );
       } catch (error) {
         return toErrorResult(error);
@@ -58,7 +58,7 @@ export const registerContactsPrivacyTools = (server: McpServer, client: Spaceshi
             `Address: ${contact.address1}${contact.address2 ? `, ${contact.address2}` : ""}`,
             `City: ${contact.city}, ${contact.stateProvince ?? ""} ${contact.postalCode}`,
             `Country: ${contact.country}`,
-            `Phone: ${contact.phone}${contact.phoneExtension ? ` ext. ${contact.phoneExtension}` : ""}`,
+            `Phone: ${contact.phone}${contact.phoneExt ? ` ext. ${contact.phoneExt}` : ""}`,
           ]
             .filter(Boolean)
             .join("\n"),
@@ -117,17 +117,18 @@ export const registerContactsPrivacyTools = (server: McpServer, client: Spaceshi
     async ({ contactId }) => {
       try {
         const attributes = await client.getContactAttributes(contactId);
+        const entries = Object.entries(attributes);
 
-        if (attributes.length === 0) {
+        if (entries.length === 0) {
           return toTextResult("No contact attributes found.");
         }
 
         return toTextResult(
           [
-            `Contact attributes (${attributes.length}):`,
-            ...attributes.map((a) => `  - ${a.attributeKey}: ${a.attributeValue}`),
+            `Contact attributes (${entries.length}):`,
+            ...entries.map(([key, value]) => `  - ${key}: ${value}`),
           ].join("\n"),
-          { attributes } as Record<string, unknown>,
+          { attributes },
         );
       } catch (error) {
         return toErrorResult(error);
@@ -140,32 +141,33 @@ export const registerContactsPrivacyTools = (server: McpServer, client: Spaceshi
     {
       title: "Update Domain Contacts",
       description:
-        "Update the contacts (registrant, admin, tech, billing) for a specific domain. " +
+        "Update the contacts (registrant, admin, tech, billing) for a specific domain using contact IDs. " +
+        "Use save_contact first to create contacts and obtain their IDs. " +
         "WARNING: Changing the registrant contact may trigger an ICANN 60-day transfer lock on the domain, preventing transfers for 60 days. " +
         "Only the contact roles you provide will be updated; omitted roles remain unchanged. " +
         "Always confirm with the user before calling this tool — show which contact roles will be changed.",
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name to update contacts for"),
-        registrant: ContactSchema.optional().describe("Registrant contact (domain owner). Changing this may trigger an ICANN transfer lock."),
-        admin: ContactSchema.optional().describe("Administrative contact"),
-        tech: ContactSchema.optional().describe("Technical contact"),
-        billing: ContactSchema.optional().describe("Billing contact"),
+        registrant: z.string().min(1).optional().describe("Registrant contact ID (domain owner). Use save_contact to get an ID. Changing this may trigger an ICANN transfer lock."),
+        admin: z.string().min(1).optional().describe("Administrative contact ID"),
+        tech: z.string().min(1).optional().describe("Technical contact ID"),
+        billing: z.string().min(1).optional().describe("Billing contact ID"),
         attributes: z
-          .array(ContactAttributeSchema)
+          .array(z.string().min(1))
           .optional()
-          .describe("TLD-specific contact attributes"),
+          .describe("Contact attribute IDs for TLD-specific requirements"),
       }),
     },
     async ({ domain, registrant, admin, tech, billing, attributes }) => {
       try {
         const normalizedDomain = normalizeDomain(domain);
-        await client.updateDomainContacts(normalizedDomain, {
-          registrant,
-          admin,
-          tech,
-          billing,
-          attributes,
+        const result = await client.updateDomainContacts(normalizedDomain, {
+          ...(registrant ? { registrant } : {}),
+          ...(admin ? { admin } : {}),
+          ...(tech ? { tech } : {}),
+          ...(billing ? { billing } : {}),
+          ...(attributes ? { attributes } : {}),
         });
 
         const updatedRoles = [
@@ -176,7 +178,10 @@ export const registerContactsPrivacyTools = (server: McpServer, client: Spaceshi
         ].filter(Boolean);
 
         return toTextResult(
-          `Successfully updated contacts for ${normalizedDomain}: ${updatedRoles.join(", ")}${attributes ? ` (with ${attributes.length} attribute(s))` : ""}`,
+          [
+            `Successfully updated contacts for ${normalizedDomain}: ${updatedRoles.join(", ")}${attributes ? ` (with ${attributes.length} attribute ID(s))` : ""}`,
+            result.verificationStatus ? `Verification status: ${result.verificationStatus}` : null,
+          ].filter(Boolean).join("\n"),
         );
       } catch (error) {
         return toErrorResult(error);

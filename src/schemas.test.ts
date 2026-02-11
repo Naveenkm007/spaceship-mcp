@@ -354,4 +354,11 @@ describe("expectedToRecord", () => {
     const result = expectedToRecord(input);
     expect(result).not.toHaveProperty("ttl");
   });
+
+  it("returns input for unknown type (unreachable default branch)", () => {
+    // Force an unknown type past TypeScript to cover the exhaustive default branch
+    const input = { type: "FAKE", name: "@" } as z.infer<typeof ExpectedRecordSchema>;
+    const result = expectedToRecord(input);
+    expect(result).toEqual(input);
+  });
 });

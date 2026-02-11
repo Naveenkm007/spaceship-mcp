@@ -10,6 +10,11 @@ const formatPrice = (price?: { amount: string; currency: string }): string =>
 const formatDomain = (d: { name: string; status?: string; binPrice?: { amount: string; currency: string }; minPrice?: { amount: string; currency: string } }): string =>
   `${d.name}${d.status ? ` [${d.status}]` : ""}${d.binPrice ? ` BIN: ${formatPrice(d.binPrice)}` : ""}${d.minPrice ? ` min: ${formatPrice(d.minPrice)}` : ""}`;
 
+const SellerHubPriceSchema = z.object({
+  amount: z.string().describe('Price amount as a string (e.g. "9999")'),
+  currency: z.string().describe('Currency code (e.g. "USD")'),
+});
+
 export const registerSellerHubTools = (server: McpServer, client: SpaceshipClient): void => {
   server.registerTool(
     "list_sellerhub_domains",
@@ -58,17 +63,31 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
       description:
         "List a domain for sale on the SellerHub marketplace. " +
         "This makes the domain publicly visible as available for purchase. The domain starts in 'verifying' status. " +
-        "After creating, use update_sellerhub_domain to set pricing (binPrice, minPrice). " +
+        "You can optionally set pricing at creation time, or use update_sellerhub_domain later. " +
         "Always confirm with the user before listing — verify the domain name.",
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name to list for sale."),
+        displayName: z.string().optional().describe("Display name for the listing."),
+        description: z.string().optional().describe("Description for the listing."),
+        binPriceEnabled: z.boolean().optional().describe("Enable the buy-it-now price."),
+        binPrice: SellerHubPriceSchema.optional().describe('Buy-it-now price (e.g. { amount: "9999", currency: "USD" }).'),
+        minPriceEnabled: z.boolean().optional().describe("Enable the minimum offer price."),
+        minPrice: SellerHubPriceSchema.optional().describe('Minimum offer price (e.g. { amount: "100", currency: "USD" }).'),
       }),
     },
-    async ({ domain }) => {
+    async ({ domain, displayName, description, binPriceEnabled, binPrice, minPriceEnabled, minPrice }) => {
       try {
         const normalizedDomain = normalizeDomain(domain);
-        const result = await client.createSellerHubDomain(normalizedDomain);
+        const result = await client.createSellerHubDomain({
+          name: normalizedDomain,
+          ...(displayName !== undefined ? { displayName } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(binPriceEnabled !== undefined ? { binPriceEnabled } : {}),
+          ...(binPrice !== undefined ? { binPrice } : {}),
+          ...(minPriceEnabled !== undefined ? { minPriceEnabled } : {}),
+          ...(minPrice !== undefined ? { minPrice } : {}),
+        });
         return toTextResult(
           `Listed ${result.name} on SellerHub [${result.status ?? "pending"}]. Use update_sellerhub_domain to set pricing.`,
           result as Record<string, unknown>,
@@ -112,11 +131,6 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
     },
   );
 
-  const SellerHubPriceSchema = z.object({
-    amount: z.string().describe('Price amount as a string (e.g. "9999")'),
-    currency: z.string().describe('Currency code (e.g. "USD")'),
-  });
-
   server.registerTool(
     "update_sellerhub_domain",
     {
@@ -127,6 +141,7 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name of the SellerHub listing."),
+        displayName: z.string().optional().describe("Display name for the listing."),
         description: z.string().optional().describe("Description for the listing."),
         binPriceEnabled: z.boolean().optional().describe("Enable or disable the buy-it-now price."),
         binPrice: SellerHubPriceSchema.optional().describe('Buy-it-now price (e.g. { amount: "9999", currency: "USD" }).'),
@@ -134,10 +149,11 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
         minPrice: SellerHubPriceSchema.optional().describe('Minimum offer price (e.g. { amount: "100", currency: "USD" }).'),
       }),
     },
-    async ({ domain, description, binPriceEnabled, binPrice, minPriceEnabled, minPrice }) => {
+    async ({ domain, displayName, description, binPriceEnabled, binPrice, minPriceEnabled, minPrice }) => {
       try {
         const normalizedDomain = normalizeDomain(domain);
         const result = await client.updateSellerHubDomain(normalizedDomain, {
+          displayName,
           description,
           binPriceEnabled,
           binPrice,
@@ -189,14 +205,24 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
       inputSchema: z.object({
         domain: z.string().min(4).max(255).describe("The domain name to create a checkout link for."),
         type: z.enum(["buyNow"]).describe('Checkout link type. Currently "buyNow" is the supported type.'),
+        basePrice: SellerHubPriceSchema.optional().describe('Optional base price override for the checkout link (e.g. { amount: "9999", currency: "USD" }).'),
       }),
     },
-    async ({ domain, type }) => {
+    async ({ domain, type, basePrice }) => {
       try {
         const normalizedDomain = normalizeDomain(domain);
-        const result = await client.createCheckoutLink({ type, domainName: normalizedDomain });
+        const result = await client.createCheckoutLink({
+          type,
+          domainName: normalizedDomain,
+          ...(basePrice !== undefined ? { basePrice } : {}),
+        });
         return toTextResult(
-          `Checkout link for ${normalizedDomain}: ${result.url}`,
+          [
+            `Checkout link for ${normalizedDomain}: ${result.url}`,
+            result.validTill ? `Valid until: ${result.validTill}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n"),
           result as Record<string, unknown>,
         );
       } catch (error) {
@@ -210,22 +236,29 @@ export const registerSellerHubTools = (server: McpServer, client: SpaceshipClien
     {
       title: "Get Verification Records",
       description:
-        "Get the DNS verification records needed to verify ownership of a SellerHub domain listing.",
+        "Get the DNS verification records needed to verify ownership of SellerHub domain listings. " +
+        "This returns account-level verification options (not per-domain). Each option contains DNS records to add.",
       annotations: { readOnlyHint: true, openWorldHint: true },
-      inputSchema: z.object({
-        domain: z.string().min(4).max(255).describe("The domain name to get verification records for."),
-      }),
+      inputSchema: z.object({}),
     },
-    async ({ domain }) => {
+    async () => {
       try {
-        const normalizedDomain = normalizeDomain(domain);
-        const records = await client.getVerificationRecords(normalizedDomain);
+        const response = await client.getVerificationRecords();
+        const allRecords = response.options.flatMap((opt) => opt.records);
+
+        if (allRecords.length === 0) {
+          return toTextResult("No verification records found.");
+        }
+
         return toTextResult(
           [
-            `Verification records for ${normalizedDomain}:`,
-            ...records.map((r) => `  - ${r.type} ${r.name} → ${r.value}`),
+            `Verification options (${response.options.length}):`,
+            ...response.options.map((opt, i) => [
+              `  Option ${i + 1}:`,
+              ...opt.records.map((r) => `    - ${r.type} ${r.name} → ${r.value}`),
+            ].join("\n")),
           ].join("\n"),
-          { records } as Record<string, unknown>,
+          response as unknown as Record<string, unknown>,
         );
       } catch (error) {
         return toErrorResult(error);

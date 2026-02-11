@@ -9,20 +9,23 @@ import type {
   DomainAvailability,
   DomainAvailabilityRaw,
   Contact,
-  ContactAttribute,
-  DomainContacts,
+  SaveContactResponse,
+  DomainContactIds,
   DomainRegistrationRequest,
   DomainRenewalRequest,
   DomainTransferRequest,
   TransferStatus,
+  AuthCodeResponse,
   AsyncOperation,
   PersonalNameserver,
   PersonalNameserverResponse,
   SellerHubDomain,
   SellerHubPrice,
   ListSellerHubDomainsResponse,
+  CreateSellerHubDomainRequest,
+  CreateCheckoutLinkRequest,
   SellerHubCheckoutLink,
-  SellerHubVerificationRecord,
+  SellerHubVerificationResponse,
 } from "./types.js";
 
 export class SpaceshipApiError extends Error {
@@ -155,6 +158,13 @@ export class SpaceshipClient {
     return this.request<Domain>(`/v1/domains/${encodeURIComponent(domain)}`);
   }
 
+  async deleteDomain(domain: string): Promise<void> {
+    await this.request(
+      `/v1/domains/${encodeURIComponent(domain)}`,
+      { method: "DELETE" },
+    );
+  }
+
   async checkDomainAvailability(domain: string): Promise<DomainAvailability> {
     const raw = await this.request<DomainAvailabilityRaw>(
       `/v1/domains/${encodeURIComponent(domain)}/available`,
@@ -210,8 +220,8 @@ export class SpaceshipClient {
     });
   }
 
-  async getAuthCode(domain: string): Promise<{ authCode: string }> {
-    return this.request<{ authCode: string }>(
+  async getAuthCode(domain: string): Promise<AuthCodeResponse> {
+    return this.request<AuthCodeResponse>(
       `/v1/domains/${encodeURIComponent(domain)}/transfer/auth-code`,
     );
   }
@@ -297,20 +307,21 @@ export class SpaceshipClient {
 
   // --- Domain Contacts ---
 
-  async updateDomainContacts(domain: string, contacts: DomainContacts): Promise<void> {
-    await this.request(
+  async updateDomainContacts(domain: string, contacts: DomainContactIds): Promise<{ verificationStatus: string | null }> {
+    const result = await this.request<{ verificationStatus?: string }>(
       `/v1/domains/${encodeURIComponent(domain)}/contacts`,
       {
         method: "PUT",
         body: JSON.stringify(contacts),
       },
     );
+    return { verificationStatus: result?.verificationStatus ?? null };
   }
 
   // --- Contacts ---
 
-  async saveContact(contact: Contact): Promise<Contact> {
-    return this.request<Contact>("/v1/contacts", {
+  async saveContact(contact: Contact): Promise<SaveContactResponse> {
+    return this.request<SaveContactResponse>("/v1/contacts", {
       method: "PUT",
       body: JSON.stringify(contact),
     });
@@ -327,11 +338,10 @@ export class SpaceshipClient {
     });
   }
 
-  async getContactAttributes(contactId: string): Promise<ContactAttribute[]> {
-    const response = await this.request<{ attributes: ContactAttribute[] }>(
+  async getContactAttributes(contactId: string): Promise<Record<string, string>> {
+    return this.request<Record<string, string>>(
       `/v1/contacts/attributes/${encodeURIComponent(contactId)}`,
     );
-    return response.attributes;
   }
 
   // --- Async Operations ---
@@ -349,6 +359,12 @@ export class SpaceshipClient {
       `/v1/domains/${encodeURIComponent(domain)}/personal-nameservers`,
     );
     return response.records;
+  }
+
+  async getPersonalNameserver(domain: string, host: string): Promise<PersonalNameserver> {
+    return this.request<PersonalNameserver>(
+      `/v1/domains/${encodeURIComponent(domain)}/personal-nameservers/${encodeURIComponent(host)}`,
+    );
   }
 
   async updatePersonalNameserver(
@@ -394,10 +410,10 @@ export class SpaceshipClient {
     return this.paginate(100, (take, skip) => this.listSellerHubDomains({ take, skip }));
   }
 
-  async createSellerHubDomain(name: string): Promise<SellerHubDomain> {
+  async createSellerHubDomain(data: CreateSellerHubDomainRequest): Promise<SellerHubDomain> {
     return this.request<SellerHubDomain>("/v1/sellerhub/domains", {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(data),
     });
   }
 
@@ -410,6 +426,7 @@ export class SpaceshipClient {
   async updateSellerHubDomain(
     name: string,
     data: {
+      displayName?: string;
       description?: string;
       binPriceEnabled?: boolean;
       binPrice?: SellerHubPrice;
@@ -433,19 +450,16 @@ export class SpaceshipClient {
     );
   }
 
-  async createCheckoutLink(data: {
-    type: string;
-    domainName: string;
-  }): Promise<SellerHubCheckoutLink> {
+  async createCheckoutLink(data: CreateCheckoutLinkRequest): Promise<SellerHubCheckoutLink> {
     return this.request<SellerHubCheckoutLink>("/v1/sellerhub/checkout-links", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async getVerificationRecords(name: string): Promise<SellerHubVerificationRecord[]> {
-    return this.request<SellerHubVerificationRecord[]>(
-      `/v1/sellerhub/domains/${encodeURIComponent(name)}/verification-records`,
+  async getVerificationRecords(): Promise<SellerHubVerificationResponse> {
+    return this.request<SellerHubVerificationResponse>(
+      "/v1/sellerhub/verification-records",
     );
   }
 

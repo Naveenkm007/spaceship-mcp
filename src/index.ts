@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SpaceshipClient } from "./spaceship-client.js";
 import { createServer } from "./server.js";
+import { checkForUpdate } from "./update-checker.js";
+
+const require = createRequire(import.meta.url);
+const { name, version } = require("../package.json") as { name: string; version: string };
 
 const apiKey = process.env.SPACESHIP_API_KEY;
 const apiSecret = process.env.SPACESHIP_API_SECRET;
@@ -18,6 +23,8 @@ const server = createServer(client);
 const main = async (): Promise<void> => {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  // Fire-and-forget — don't block server startup
+  void checkForUpdate(name, version);
 };
 
 main().catch((error) => {

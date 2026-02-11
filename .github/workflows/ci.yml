@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm test -- --coverage
+
+      - name: Extract coverage
+        id: coverage
+        run: |
+          COVERAGE=$(node -e "const c=require('./coverage/coverage-summary.json');console.log(c.total.statements.pct)")
+          echo "pct=$COVERAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Update coverage badge
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: spaceship-mcp-coverage.json
+          label: coverage
+          message: ${{ steps.coverage.outputs.pct }}%
+          valColorRange: ${{ steps.coverage.outputs.pct }}
+          minColorRange: 50
+          maxColorRange: 100

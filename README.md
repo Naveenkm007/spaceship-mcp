@@ -3,7 +3,8 @@
 [![npm version](https://img.shields.io/npm/v/spaceship-mcp.svg)](https://www.npmjs.com/package/spaceship-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
-[![Tests](https://img.shields.io/badge/tests-122%20passing-brightgreen.svg)]()
+[![CI](https://github.com/bartwaardenburg/spaceship-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/bartwaardenburg/spaceship-mcp/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/bartwaardenburg/GIST_ID/raw/spaceship-mcp-coverage.json)]()
 [![MCP](https://img.shields.io/badge/MCP-compatible-purple.svg)](https://modelcontextprotocol.io)
 
 A community-built [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server for the [Spaceship](https://spaceship.com) API. Manage domains, DNS records, contacts, marketplace listings, and more — all through natural language via any MCP-compatible AI client.
@@ -12,14 +13,14 @@ A community-built [Model Context Protocol](https://modelcontextprotocol.io) (MCP
 
 ## Features
 
-- **47 tools** across 8 categories covering the full Spaceship API
+- **48 tools** across 8 categories covering the full Spaceship API
 - **13 DNS record types** with dedicated, type-safe creation tools (A, AAAA, ALIAS, CAA, CNAME, HTTPS, MX, NS, PTR, SRV, SVCB, TLSA, TXT)
 - **Complete domain lifecycle** — register, renew, transfer, and restore domains
 - **SellerHub integration** — list domains for sale and generate checkout links
 - **DNS alignment analysis** — compare expected vs actual records to catch misconfigurations
 - **WHOIS privacy and contact management** with TLD-specific attribute support
 - **Input validation** via Zod schemas on every tool for safe, predictable operations
-- **122 unit tests** for reliability
+- **326 unit tests** for reliability
 
 ## Supported Clients
 
@@ -318,7 +319,7 @@ Each DNS record type has a dedicated tool with type-safe parameters and validati
 | `list_sellerhub_domains` | List domains for sale on the marketplace |
 | `create_sellerhub_domain` | List a domain for sale with pricing |
 | `get_sellerhub_domain` | Get listing details |
-| `update_sellerhub_domain` | Update listing price and currency |
+| `update_sellerhub_domain` | Update listing display name, description, and pricing |
 | `delete_sellerhub_domain` | Remove a listing from the marketplace |
 | `create_checkout_link` | Generate a buy-now checkout link for a listing |
 | `get_verification_records` | Get DNS verification records for a listing |

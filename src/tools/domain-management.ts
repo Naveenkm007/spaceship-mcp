@@ -243,8 +243,13 @@ export const registerDomainManagementTools = (server: McpServer, client: Spacesh
         const result = await client.getAuthCode(normalizedDomain);
 
         return toTextResult(
-          `Auth code for ${normalizedDomain}: ${result.authCode}`,
-          result,
+          [
+            `Auth code for ${normalizedDomain}: ${result.authCode}`,
+            result.expires ? `Expires: ${result.expires}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          result as unknown as Record<string, unknown>,
         );
       } catch (error) {
         return toErrorResult(error);

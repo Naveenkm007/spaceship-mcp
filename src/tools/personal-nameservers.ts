@@ -41,6 +41,32 @@ export const registerPersonalNameserverTools = (server: McpServer, client: Space
   );
 
   server.registerTool(
+    "get_personal_nameserver",
+    {
+      title: "Get Personal Nameserver",
+      description:
+        "Get details of a single personal (vanity) nameserver by hostname, including its IP addresses.",
+      annotations: { readOnlyHint: true, openWorldHint: true },
+      inputSchema: z.object({
+        domain: z.string().min(4).max(255).describe("The parent domain name."),
+        host: z.string().min(1).describe('The nameserver hostname (e.g. "ns1.yourdomain.com").'),
+      }),
+    },
+    async ({ domain, host }) => {
+      try {
+        const normalizedDomain = normalizeDomain(domain);
+        const ns = await client.getPersonalNameserver(normalizedDomain, host);
+        return toTextResult(
+          `Personal nameserver: ${ns.host}${ns.ips?.length ? ` (${ns.ips.join(", ")})` : ""}`,
+          ns as unknown as Record<string, unknown>,
+        );
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
     "update_personal_nameserver",
     {
       title: "Update Personal Nameserver",

@@ -102,7 +102,7 @@ export interface Domain {
     provider?: string;
     hosts?: string[];
   };
-  contacts?: DomainContacts;
+  contacts?: DomainContactIds;
   [key: string]: unknown;
 }
 
@@ -139,24 +139,26 @@ export interface Contact {
   city: string;
   country: string;
   stateProvince?: string;
-  postalCode: string;
+  postalCode?: string;
   phone: string;
-  phoneExtension?: string;
+  phoneExt?: string;
   fax?: string;
-  faxExtension?: string;
+  faxExt?: string;
+  taxNumber?: string;
 }
 
-export interface ContactAttribute {
-  attributeKey: string;
-  attributeValue: string;
+/** OpenAPI: PUT /v1/contacts returns only { contactId } */
+export interface SaveContactResponse {
+  contactId: string;
 }
 
-export interface DomainContacts {
-  registrant?: Contact;
-  admin?: Contact;
-  tech?: Contact;
-  billing?: Contact;
-  attributes?: ContactAttribute[];
+/** Contact references for domain operations — uses contactId strings per OpenAPI spec */
+export interface DomainContactIds {
+  registrant?: string;
+  admin?: string;
+  tech?: string;
+  billing?: string;
+  attributes?: string[];
 }
 
 // --- Domain Lifecycle ---
@@ -168,7 +170,7 @@ export interface DomainRegistrationRequest {
     level?: "high" | "public";
     userConsent?: boolean;
   };
-  contacts?: DomainContacts;
+  contacts?: DomainContactIds;
 }
 
 export interface DomainRenewalRequest {
@@ -183,12 +185,18 @@ export interface DomainTransferRequest {
     level?: "high" | "public";
     userConsent?: boolean;
   };
-  contacts?: DomainContacts;
+  contacts?: DomainContactIds;
 }
 
 export interface TransferStatus {
   status: string;
   [key: string]: unknown;
+}
+
+/** OpenAPI: DomainAuthCodeResponse { authCode, expires } */
+export interface AuthCodeResponse {
+  authCode: string;
+  expires: string;
 }
 
 // --- Async Operations ---
@@ -237,8 +245,27 @@ export interface ListSellerHubDomainsResponse {
   total: number;
 }
 
+/** OpenAPI: CreateSellerHubDomainRequest — supports optional fields on creation */
+export interface CreateSellerHubDomainRequest {
+  name: string;
+  displayName?: string;
+  description?: string;
+  binPrice?: SellerHubPrice;
+  binPriceEnabled?: boolean;
+  minPrice?: SellerHubPrice;
+  minPriceEnabled?: boolean;
+}
+
+/** OpenAPI: CreateCheckoutLinkRequest — includes optional basePrice */
+export interface CreateCheckoutLinkRequest {
+  type: string;
+  domainName: string;
+  basePrice?: SellerHubPrice;
+}
+
 export interface SellerHubCheckoutLink {
   url: string;
+  validTill?: string;
   [key: string]: unknown;
 }
 
@@ -247,4 +274,14 @@ export interface SellerHubVerificationRecord {
   name: string;
   value: string;
   [key: string]: unknown;
+}
+
+/** OpenAPI: SellerHub.VerificationOption — one verification method with required records */
+export interface SellerHubVerificationOption {
+  records: SellerHubVerificationRecord[];
+}
+
+/** OpenAPI: SellerHub.VerificationResponse — { options: [...] } */
+export interface SellerHubVerificationResponse {
+  options: SellerHubVerificationOption[];
 }

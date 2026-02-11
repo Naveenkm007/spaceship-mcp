@@ -16,9 +16,9 @@ describe("createServer", () => {
     expect(server).toBeDefined();
   });
 
-  it("registers all 47 tools", () => {
+  it("registers all 48 tools", () => {
     const tools = getTools();
-    expect(Object.keys(tools)).toHaveLength(47);
+    expect(Object.keys(tools)).toHaveLength(48);
   });
 
   it("registers all expected tool names", () => {
@@ -76,6 +76,7 @@ describe("createServer", () => {
       "get_verification_records",
       // Personal Nameservers
       "list_personal_nameservers",
+      "get_personal_nameserver",
       "update_personal_nameserver",
       "delete_personal_nameserver",
       // Analysis

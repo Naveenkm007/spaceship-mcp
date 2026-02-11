@@ -122,6 +122,61 @@ describe("recordComparableValue", () => {
   it("returns empty string for truly unknown types", () => {
     expect(recordComparableValue({ type: "UNKNOWN", name: "@" })).toBe("");
   });
+
+  it("handles A record with missing address", () => {
+    expect(recordComparableValue({ type: "A", name: "@" })).toBe("");
+  });
+
+  it("handles AAAA record with missing address", () => {
+    expect(recordComparableValue({ type: "AAAA", name: "@" })).toBe("");
+  });
+
+  it("handles ALIAS with missing aliasName", () => {
+    expect(recordComparableValue({ type: "ALIAS", name: "@" })).toBe("");
+  });
+
+  it("handles CAA with missing fields", () => {
+    expect(recordComparableValue({ type: "CAA", name: "@" })).toBe("0::");
+  });
+
+  it("handles CNAME with missing cname", () => {
+    expect(recordComparableValue({ type: "CNAME", name: "www" })).toBe("");
+  });
+
+  it("handles HTTPS with missing fields", () => {
+    expect(recordComparableValue({ type: "HTTPS", name: "@" })).toBe("::::");
+  });
+
+  it("handles MX with missing fields", () => {
+    expect(recordComparableValue({ type: "MX", name: "@" })).toBe("-1:");
+  });
+
+  it("handles NS with missing nameserver", () => {
+    expect(recordComparableValue({ type: "NS", name: "sub" })).toBe("");
+  });
+
+  it("handles PTR with missing pointer", () => {
+    expect(recordComparableValue({ type: "PTR", name: "1" })).toBe("");
+  });
+
+  it("handles SRV with missing fields", () => {
+    expect(recordComparableValue({ type: "SRV", name: "_sip._tcp" })).toBe(":::::");
+  });
+
+  it("handles TLSA with missing fields", () => {
+    expect(recordComparableValue({ type: "TLSA", name: "_443._tcp" })).toBe(":::::");
+  });
+
+  it("handles TXT with missing value", () => {
+    expect(recordComparableValue({ type: "TXT", name: "@" })).toBe("");
+  });
+
+  it("handles SVCB with all fields", () => {
+    expect(recordComparableValue({
+      type: "SVCB", name: "@", svcPriority: 1, targetName: "svc.example.com",
+      svcParams: "alpn=h2", port: "_443", scheme: "_https",
+    })).toBe("1:svc.example.com:alpn=h2:_443:_https");
+  });
 });
 
 describe("recordFingerprint", () => {
@@ -133,6 +188,11 @@ describe("recordFingerprint", () => {
   it("includes TTL when requested", () => {
     const fp = recordFingerprint({ type: "A", name: "@", address: "1.2.3.4", ttl: 300 }, true);
     expect(fp).toBe("A|@|1.2.3.4|300");
+  });
+
+  it("uses empty string for TTL when includeTtl=true but ttl is undefined", () => {
+    const fp = recordFingerprint({ type: "A", name: "@", address: "1.2.3.4" }, true);
+    expect(fp).toBe("A|@|1.2.3.4|");
   });
 
   it("normalizes name case", () => {
@@ -283,6 +343,15 @@ describe("extractComparableFields", () => {
       matching: 1,
       associationData: "abcdef",
       scheme: "_tcp",
+      ttl: undefined,
+    });
+  });
+
+  it("extracts TXT record fields", () => {
+    expect(extractComparableFields({ type: "TXT", name: "@", value: "v=spf1 -all" })).toEqual({
+      type: "TXT",
+      name: "@",
+      value: "v=spf1 -all",
       ttl: undefined,
     });
   });
