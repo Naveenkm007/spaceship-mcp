@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/BartWaardenburg/spaceship-mcp/compare/v0.2.0...v0.2.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* auto-delete conflicting DNS records before saving ([45ef3f9](https://github.com/BartWaardenburg/spaceship-mcp/commit/45ef3f95dfcc102aff5dd93f96a62d16b494c1c3))
+
 # 0.2.0 (2026-02-11)
 
 
