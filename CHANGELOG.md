@@ -1,0 +1,15 @@
+# Changelog
+
+# 0.2.0 (2026-02-11)
+
+
+### Bug Fixes
+
+* access nameservers.hosts instead of nameservers directly ([5dd7558](https://github.com/BartWaardenburg/spaceship-mcp/commit/5dd7558520cd4bd734e06098ea0c106dd004bdf5))
+
+
+### Features
+
+* add domain lifecycle, contacts, sellerhub, personal nameservers and fix API payloads ([9488661](https://github.com/BartWaardenburg/spaceship-mcp/commit/9488661750c94995dbc295d6fd8831962897bd1c))
+* add spaceship dns check mcp server ([47f47f8](https://github.com/BartWaardenburg/spaceship-mcp/commit/47f47f8a9038579d01d20686c94627add6430329))
+* add support for all DNS record types and tests ([e43ef0a](https://github.com/BartWaardenburg/spaceship-mcp/commit/e43ef0acba498cc83bae449b952d0c0422df079d))
